@@ -29,8 +29,15 @@ export type ClothingItem = {
   lastWornAt?: string;
 };
 
+export type WearLog = {
+  id: string;
+  itemId: string;
+  wornAt: string;
+};
+
 class MyLifeDB extends Dexie {
-  clothingItems!: Table<ClothingItem, string>;
+    clothingItems!: Table<ClothingItem, string>;
+    wearLogs!: Table<WearLog, string>;
 
   constructor() {
     super("myLifeDb");
@@ -42,6 +49,10 @@ class MyLifeDB extends Dexie {
     });
     this.version(3).stores({
       clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt",
+    });
+    this.version(4).stores({
+      clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt",
+      wearLogs: "id, itemId, wornAt",
     });
   }
 }

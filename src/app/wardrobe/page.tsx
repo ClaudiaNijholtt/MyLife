@@ -71,6 +71,11 @@ export default function WardrobePage() {
           />
         </div>
 
+        <div className="bg-white rounded-2xl shadow-sm p-4 mb-5">
+            <p className="text-sm text-gray-500">Quick stats</p>
+            <Stats />
+        </div>
+
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <p className="font-medium mb-1 text-black">No items yet</p>
@@ -109,5 +114,33 @@ export default function WardrobePage() {
         )}
       </div>
     </main>
+  );
+}
+
+function Stats() {
+  const [worn30, setWorn30] = useState<number>(0);
+
+  useEffect(() => {
+    refresh();
+
+    async function refresh() {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const sinceIso = since.toISOString();
+
+      const logs = await db.wearLogs
+        .where("wornAt")
+        .above(sinceIso)
+        .toArray();
+
+      const uniqueItems = new Set(logs.map((l) => l.itemId));
+      setWorn30(uniqueItems.size);
+    }
+  }, []);
+
+  return (
+    <p className="text-sm font-medium text-black">
+      Items worn in last 30 days: <span className="font-bold">{worn30}</span>
+    </p>
   );
 }

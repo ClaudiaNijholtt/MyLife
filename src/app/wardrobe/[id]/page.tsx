@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db, type ClothingItem } from "@/lib/db";
+import { markItemWornToday } from "@/lib/wear";
 
 export default function WardrobeItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -11,6 +12,7 @@ export default function WardrobeItemDetailPage() {
 
   const [item, setItem] = useState<ClothingItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wornTodayClicked, setWornTodayClicked] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -25,6 +27,18 @@ export default function WardrobeItemDetailPage() {
     await db.clothingItems.delete(id);
     router.push("/wardrobe");
   }
+
+  async function onWornToday() {
+    await markItemWornToday(id);
+    const found = await db.clothingItems.get(id);
+    setItem(found ?? null);
+    setWornTodayClicked(true);
+    setTimeout(() => setWornTodayClicked(false), 2000);
+  }
+
+  const isWornToday = item?.lastWornAt 
+    ? new Date(item.lastWornAt).toDateString() === new Date().toDateString()
+    : false;
 
   if (loading) {
     return (
@@ -62,16 +76,30 @@ export default function WardrobeItemDetailPage() {
 
           <div className="flex gap-2">
             <button
-              onClick={() => router.push(`/wardrobe/${id}/edit`)}
-              className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black"
+                onClick={onWornToday}
+                className={`px-4 py-2 rounded-full shadow-sm transition-all ${
+                  wornTodayClicked 
+                    ? "bg-green-500 text-white border-green-500" 
+                    : isWornToday
+                      ? "bg-green-100 text-green-800 border border-green-300"
+                      : "bg-white border border-gray-200 text-black hover:bg-gray-50"
+                }`}
             >
-              Edit
+                {wornTodayClicked ? "✓ Marked!" : isWornToday ? "Worn today ✓" : "Worn today"}
             </button>
+
             <button
-              onClick={onDelete}
-              className="bg-black text-white px-4 py-2 rounded-full shadow"
+                onClick={() => router.push(`/wardrobe/${id}/edit`)}
+                className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black hover:bg-gray-50 transition-all"
             >
-              Delete
+                Edit
+            </button>
+
+            <button
+                onClick={onDelete}
+                className="bg-black text-white px-4 py-2 rounded-full shadow hover:bg-gray-800 transition-all"
+            >
+                Delete
             </button>
           </div>
         </div>
