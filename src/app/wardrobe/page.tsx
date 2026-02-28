@@ -9,22 +9,26 @@ export default function WardrobePage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    const sub = db.clothingItems.hook("creating", refresh);
-    const sub2 = db.clothingItems.hook("updating", refresh);
-    const sub3 = db.clothingItems.hook("deleting", refresh);
-
-    refresh();
-
-    return () => {
-      db.clothingItems.hook("creating").unsubscribe(sub);
-      db.clothingItems.hook("updating").unsubscribe(sub2);
-      db.clothingItems.hook("deleting").unsubscribe(sub3);
-    };
-
     async function refresh() {
       const all = await db.clothingItems.orderBy("createdAt").reverse().toArray();
       setItems(all);
     }
+
+    const creatingHandler = () => refresh();
+    const updatingHandler = () => refresh();
+    const deletingHandler = () => refresh();
+
+    db.clothingItems.hook("creating").subscribe(creatingHandler);
+    db.clothingItems.hook("updating").subscribe(updatingHandler);
+    db.clothingItems.hook("deleting").subscribe(deletingHandler);
+
+    refresh();
+
+    return () => {
+      db.clothingItems.hook("creating").unsubscribe(creatingHandler);
+      db.clothingItems.hook("updating").unsubscribe(updatingHandler);
+      db.clothingItems.hook("deleting").unsubscribe(deletingHandler);
+    };
   }, []);
 
   const filtered = useMemo(() => {
