@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db, type ClothingItem } from "@/lib/db";
 import { markItemWornToday } from "@/lib/wear";
+import { sendToLaundry, markAsClean } from "@/lib/laundry";
 
 export default function WardrobeItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -35,6 +36,18 @@ export default function WardrobeItemDetailPage() {
     setWornTodayClicked(true);
     setTimeout(() => setWornTodayClicked(false), 2000);
   }
+
+  async function onSendToLaundry() {
+  await sendToLaundry(id);
+  const found = await db.clothingItems.get(id);
+  setItem(found ?? null);
+}
+
+async function onMarkClean() {
+  await markAsClean(id);
+  const found = await db.clothingItems.get(id);
+  setItem(found ?? null);
+}
 
   const isWornToday = item?.lastWornAt 
     ? new Date(item.lastWornAt).toDateString() === new Date().toDateString()
@@ -74,7 +87,7 @@ export default function WardrobeItemDetailPage() {
             Back
           </button>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
                 onClick={onWornToday}
                 className={`px-4 py-2 rounded-full shadow-sm transition-all ${
@@ -87,6 +100,20 @@ export default function WardrobeItemDetailPage() {
             >
                 {wornTodayClicked ? "✓ Marked!" : isWornToday ? "Worn today ✓" : "Worn today"}
             </button>
+
+              <button
+                    onClick={onSendToLaundry}
+                    className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black hover:bg-gray-50 transition-all"
+                >
+                    Send to laundry
+                </button>
+
+                <button
+                    onClick={onMarkClean}
+                    className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black hover:bg-gray-50 transition-all"
+                >
+                    Mark as clean
+                </button>
 
             <button
                 onClick={() => router.push(`/wardrobe/${id}/edit`)}
@@ -126,6 +153,11 @@ export default function WardrobeItemDetailPage() {
             </div>
 
             <div>
+              <p className="font-medium text-black">Wash after wears</p>
+              <p className="text-gray-600">{item.washAfterWears} {item.washAfterWears === 1 ? "wear" : "wears"}</p>
+            </div>
+
+            <div>
               <p className="font-medium text-black">Occasions</p>
               <p className="text-gray-600">{item.occasions.length ? item.occasions.join(", ") : "-"}</p>
             </div>
@@ -133,6 +165,13 @@ export default function WardrobeItemDetailPage() {
             <div>
               <p className="font-medium text-black">Last worn</p>
               <p className="text-gray-600">{item.lastWornAt ? new Date(item.lastWornAt).toLocaleDateString() : "-"}</p>
+            </div>
+
+            <div>
+                <p className="font-medium">Laundry</p>
+                <p className="text-gray-600">
+                    {item.laundryState ?? "-"} • wears since wash: {item.wearsSinceWash ?? 0} / {item.washAfterWears ?? "-"}
+                </p>
             </div>
           </div>
         </div>

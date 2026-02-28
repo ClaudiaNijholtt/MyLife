@@ -136,6 +136,7 @@ export default function EditWardrobeItemPage() {
   const [season, setSeason] = useState<ClothingSeason>("all");
   const [style, setStyle] = useState<ClothingStyle | undefined>(undefined);
   const [size, setSize] = useState("");
+  const [washAfterWears, setWashAfterWears] = useState(1);
   const [colorsRaw, setColorsRaw] = useState("");
   const [occasionsRaw, setOccasionsRaw] = useState("");
   const [preview, setPreview] = useState<string>("");
@@ -159,6 +160,7 @@ export default function EditWardrobeItemPage() {
       setSeason(found.season);
       setStyle(found.style);
       setSize(found.size || "");
+      setWashAfterWears(found.washAfterWears);
       setColorsRaw(found.colors.join(", "));
       setOccasionsRaw(found.occasions.join(", "));
       setPreview(found.photoDataUrl);
@@ -209,6 +211,7 @@ export default function EditWardrobeItemPage() {
         season,
         style,
         size: size.trim() || undefined,
+        washAfterWears,
         colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),
         photoDataUrl,
@@ -382,6 +385,24 @@ export default function EditWardrobeItemPage() {
               placeholder="e.g. S, M, L, XL, 38, 40"
               className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
             />
+          </div>
+
+          <div className="mb-4">
+            <label className="text-sm font-medium text-black">Wash after wears</label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={washAfterWears}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val) && val >= 1 && val <= 20) {
+                  setWashAfterWears(val);
+                }
+              }}
+              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+            />
+            <p className="text-xs text-gray-500 mt-1">How many times can you wear this before washing?</p>
           </div>
 
           <div className="mb-4">

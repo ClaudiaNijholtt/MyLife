@@ -108,6 +108,11 @@ export default function WardrobePage() {
                 <p className="text-xs text-gray-500">
                     {item.category} • {item.season}
                 </p>
+                <div className="mt-1">
+                    <span className="inline-block text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                        {item.laundryState ?? "clean"}
+                    </span>
+                </div>
                 </Link>
             ))}
           </div>
