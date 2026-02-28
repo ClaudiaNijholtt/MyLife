@@ -87,19 +87,23 @@ export default function WardrobePage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filtered.map((item) => (
-              <div key={item.id} className="bg-white rounded-2xl shadow-sm p-3">
+                <Link
+                key={item.id}
+                href={`/wardrobe/${item.id}`}
+                className="bg-white rounded-2xl shadow-sm p-3 block hover:shadow-md transition"
+                >
                 <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2">
-                  <img
+                    <img
                     src={item.photoDataUrl}
                     alt={item.name}
                     className="w-full h-full object-cover"
-                  />
+                    />
                 </div>
                 <p className="text-sm font-medium truncate text-black">{item.name}</p>
                 <p className="text-xs text-gray-500">
-                  {item.category} • {item.season}
+                    {item.category} • {item.season}
                 </p>
-              </div>
+                </Link>
             ))}
           </div>
         )}
