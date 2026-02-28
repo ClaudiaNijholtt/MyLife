@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
   db, 
@@ -130,12 +130,20 @@ export default function AddWardrobeItemPage() {
   const [season, setSeason] = useState<ClothingSeason>("all");
   const [style, setStyle] = useState<ClothingStyle | undefined>("casual");
   const [size, setSize] = useState("");
+  const [washAfterWears, setWashAfterWears] = useState(1);
   const [colorsRaw, setColorsRaw] = useState("");
   const [occasionsRaw, setOccasionsRaw] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
+
+  // Update default washAfterWears based on category
+  useEffect(() => {
+    if (category === "top") setWashAfterWears(2);
+    else if (category === "bottom") setWashAfterWears(3);
+    else setWashAfterWears(5);
+  }, [category]);
 
 const subcategoryOptions = useMemo(() => {
     switch (category) {
@@ -187,6 +195,9 @@ const subcategoryOptions = useMemo(() => {
         occasions: parseList(occasionsRaw),
         createdAt: now,
         updatedAt: now,
+        laundryState: "clean",
+        wearsSinceWash: 0,
+        washAfterWears,
       });
 
       router.push("/wardrobe");
@@ -334,6 +345,24 @@ const subcategoryOptions = useMemo(() => {
               placeholder="e.g. S, M, L, XL, 38, 40"
               className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
             />
+          </div>
+
+          <div className="mb-4">
+            <label className="text-sm font-medium text-black">Wash after wears</label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={washAfterWears}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val) && val >= 1 && val <= 20) {
+                  setWashAfterWears(val);
+                }
+              }}
+              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+            />
+            <p className="text-xs text-gray-500 mt-1">How many times can you wear this before washing?</p>
           </div>
 
           <div className="mb-4">

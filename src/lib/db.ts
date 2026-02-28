@@ -3,6 +3,7 @@ import Dexie, { type Table } from "dexie";
 export type ClothingCategory = "top" | "bottom" | "outerwear" | "shoes" | "jewelry" | "accessory" | "full-body" | "other";
 export type ClothingSeason = "summer" | "winter" | "all";
 export type ClothingStyle = "casual" | "classy" | "sporty" | "formal" | "bohemian" | "streetwear" | "minimalist" | "other";
+export type LaundryState = "clean" | "wear again" | "needs wash" | "in laundry";
 
 export type TopSubcategory = "t-shirt" | "sweater" | "blouse" | "shirt" | "top" | "tank-top" | "bodysuit" | "other";
 export type BottomSubcategory = "shorts" | "pants" | "trousers" | "tights" | "skirt" | "jeans" | "other";
@@ -27,6 +28,9 @@ export type ClothingItem = {
   createdAt: string;
   updatedAt: string;
   lastWornAt?: string;
+  laundryState: LaundryState;
+  wearsSinceWash: number;
+  washAfterWears: number;
 };
 
 export type WearLog = {
@@ -48,10 +52,10 @@ class MyLifeDB extends Dexie {
       clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt",
     });
     this.version(3).stores({
-      clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt",
+      clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt, laundryState, wearsSinceWash, washAfterWears",
     });
     this.version(4).stores({
-      clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt",
+      clothingItems: "id, category, subcategory, season, style, createdAt, updatedAt, lastWornAt, laundryState, wearsSinceWash, washAfterWears",
       wearLogs: "id, itemId, wornAt",
     });
   }
