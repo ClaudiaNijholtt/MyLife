@@ -24,14 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-gray-100">
-        <nav className="bg-white border-b">
-          <div className="max-w-5xl mx-auto p-4 flex gap-4">
-            <a href="/" className="font-medium text-black">Dashboard</a>
-            <a href="/wardrobe" className="font-medium text-black">Wardrobe</a>
-          </div>
-        </nav>
-
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>
