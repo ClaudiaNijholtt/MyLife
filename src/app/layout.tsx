@@ -27,8 +27,8 @@ export default function RootLayout({
       <body className="bg-gray-100">
         <nav className="bg-white border-b">
           <div className="max-w-5xl mx-auto p-4 flex gap-4">
-            <a href="/" className="font-medium">Dashboard</a>
-            <a href="/wardrobe" className="font-medium">Wardrobe</a>
+            <a href="/" className="font-medium text-black">Dashboard</a>
+            <a href="/wardrobe" className="font-medium text-black">Wardrobe</a>
           </div>
         </nav>
 
