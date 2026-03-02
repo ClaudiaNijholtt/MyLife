@@ -17,7 +17,7 @@ import {
   type AccessorySubcategory,
   type FullBodySubcategory
 } from "@/lib/db";
-import { fileToDataUrl } from "@/lib/file";
+import { fileToDataUrl, resizeImage } from "@/lib/file";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -180,12 +180,14 @@ const subcategoryOptions = useMemo(() => {
 
     try {
       const photoDataUrl = preview || (await fileToDataUrl(file));
+      const thumbnailDataUrl = await resizeImage(photoDataUrl, 300, 300);
       const now = new Date().toISOString();
 
       await db.clothingItems.put({
         id: uid(),
         name: name.trim(),
         photoDataUrl,
+        thumbnailDataUrl,
         category,
         subcategory,
         colors: parseList(colorsRaw),

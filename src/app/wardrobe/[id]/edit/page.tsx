@@ -17,7 +17,7 @@ import {
   type FullBodySubcategory,
   type ClothingItem 
 } from "@/lib/db";
-import { fileToDataUrl } from "@/lib/file";
+import { fileToDataUrl, resizeImage } from "@/lib/file";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -202,6 +202,12 @@ export default function EditWardrobeItemPage() {
     try {
       const now = new Date().toISOString();
       const photoDataUrl = preview;
+      
+      // Generate thumbnail if photo was updated
+      let thumbnailDataUrl = item.thumbnailDataUrl;
+      if (newFile) {
+        thumbnailDataUrl = await resizeImage(photoDataUrl, 300, 300);
+      }
 
       await db.clothingItems.put({
         ...item,
@@ -215,6 +221,7 @@ export default function EditWardrobeItemPage() {
         colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),
         photoDataUrl,
+        thumbnailDataUrl,
         updatedAt: now,
       });
 

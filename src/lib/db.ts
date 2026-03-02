@@ -18,6 +18,7 @@ export type ClothingItem = {
   id: string;
   name: string;
   photoDataUrl: string;
+  thumbnailDataUrl?: string; // Smaller version for grid view (300x300)
   category: ClothingCategory;
   subcategory?: ClothingSubcategory;
   colors: string[];
@@ -45,6 +46,8 @@ class MyLifeDB extends Dexie {
 
   constructor() {
     super("myLifeDb");
+    
+    // Define all versions for backwards compatibility
     this.version(1).stores({
       clothingItems: "id, category, season, createdAt, updatedAt, lastWornAt",
     });

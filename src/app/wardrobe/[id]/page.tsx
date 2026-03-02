@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { db, type ClothingItem } from "@/lib/db";
 import { markItemWornToday } from "@/lib/wear";
 import { sendToLaundry, markAsClean } from "@/lib/laundry";
+import { getSimilarItems } from "@/lib/recommendations";
+import { suggestOutfitsWithItem } from "@/lib/outfit-with-item";
 
 export default function WardrobeItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -14,12 +17,15 @@ export default function WardrobeItemDetailPage() {
   const [item, setItem] = useState<ClothingItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [wornTodayClicked, setWornTodayClicked] = useState(false);
+  const [allItems, setAllItems] = useState<ClothingItem[]>([]);
 
   useEffect(() => {
     (async () => {
-      const found = await db.clothingItems.get(id);
-      setItem(found ?? null);
-      setLoading(false);
+    const found = await db.clothingItems.get(id);
+    const all = await db.clothingItems.toArray();
+    setItem(found ?? null);
+    setAllItems(all);
+    setLoading(false);
     })();
   }, [id]);
 
@@ -79,6 +85,9 @@ async function onMarkClean() {
     );
   }
 
+  const similar = getSimilarItems(allItems, item, 6);
+  const outfitIdeas = suggestOutfitsWithItem(allItems, item, 4);
+
   return (
     <main className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-2xl p-6">
@@ -133,7 +142,7 @@ async function onMarkClean() {
 
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-4">
-            <img src={item.photoDataUrl} alt={item.name} className="w-full h-full object-cover" />
+            <img src={item.photoDataUrl} alt={item.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
           </div>
 
           <h1 className="text-2xl font-bold mb-1 text-black">{item.name}</h1>
@@ -174,6 +183,65 @@ async function onMarkClean() {
                 </p>
             </div>
           </div>
+        </div>
+
+        {/* Similar items */}
+<div className="mt-6 bg-white rounded-2xl shadow-sm p-5">
+  <h2 className="text-lg font-semibold mb-3">Similar items</h2>
+
+  {similar.length === 0 ? (
+    <p className="text-sm text-gray-500">No similar items found yet.</p>
+  ) : (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {similar.map((s) => (
+        <Link
+          key={s.id}
+          href={`/wardrobe/${s.id}`}
+          className="bg-gray-50 rounded-2xl p-3 hover:shadow-sm transition block"
+        >
+          <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2">
+            <img src={s.thumbnailDataUrl || s.photoDataUrl} alt={s.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+          </div>
+          <p className="text-sm font-medium truncate">{s.name}</p>
+          <p className="text-xs text-gray-500">{s.category}</p>
+        </Link>
+      ))}
+    </div>
+  )}
+</div>
+
+        {/* Outfit ideas */}
+        <div className="mt-4 bg-white rounded-2xl shadow-sm p-5">
+        <h2 className="text-lg font-semibold mb-3">Outfits with this item</h2>
+
+        {outfitIdeas.length === 0 ? (
+            <p className="text-sm text-gray-500">
+            Add more tops/bottoms/shoes to generate outfits.
+            </p>
+        ) : (
+            <div className="space-y-4">
+            {outfitIdeas.map((idea, idx) => (
+                <div key={idx} className="bg-gray-50 rounded-2xl p-3">
+                <p className="text-xs text-gray-500 mb-2">Outfit {idx + 1} ({idea.items.length} items)</p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                    {idea.items.map((it) => (
+                    <Link
+                        key={it.id}
+                        href={`/wardrobe/${it.id}`}
+                        className="block rounded-xl overflow-hidden bg-gray-200 aspect-square"
+                        title={it.name}
+                    >
+                        <img src={it.thumbnailDataUrl || it.photoDataUrl} alt={it.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    </Link>
+                    ))}
+                </div>
+                <p className="text-xs text-gray-600 mt-2">
+                    {idea.items.map((x) => x.name).join(" • ")}
+                </p>
+                </div>
+            ))}
+            </div>
+        )}
         </div>
       </div>
     </main>

@@ -6,6 +6,7 @@ import { db, type ClothingItem } from "@/lib/db";
 
 export default function WardrobePage() {
   const [items, setItems] = useState<ClothingItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [category, setCategory] = useState<string>("*");
@@ -15,26 +16,25 @@ export default function WardrobePage() {
   const [laundryState, setLaundryState] = useState<string>("*");
 
   useEffect(() => {
-    async function refresh() {
-      const all = await db.clothingItems.orderBy("createdAt").reverse().toArray();
-      setItems(all);
+    async function loadItems() {
+      try {
+        console.log("[Wardrobe] Starting to load items...");
+        const startTime = performance.now();
+        const all = await db.clothingItems.toArray();
+        const endTime = performance.now();
+        console.log(`[Wardrobe] Loaded ${all.length} items in ${(endTime - startTime).toFixed(2)}ms`);
+        
+        setItems(all.sort((a, b) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }));
+      } catch (error) {
+        console.error("Error loading items:", error);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    const creatingHandler = () => refresh();
-    const updatingHandler = () => refresh();
-    const deletingHandler = () => refresh();
-
-    db.clothingItems.hook("creating").subscribe(creatingHandler);
-    db.clothingItems.hook("updating").subscribe(updatingHandler);
-    db.clothingItems.hook("deleting").subscribe(deletingHandler);
-
-    refresh();
-
-    return () => {
-      db.clothingItems.hook("creating").unsubscribe(creatingHandler);
-      db.clothingItems.hook("updating").unsubscribe(updatingHandler);
-      db.clothingItems.hook("deleting").unsubscribe(deletingHandler);
-    };
+    loadItems();
   }, []);
 
   const filtered = useMemo(() => {
@@ -262,7 +262,11 @@ export default function WardrobePage() {
             </div>
         )}
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <p className="text-sm text-gray-500">Loading items...</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl p-6 shadow-sm">
             <p className="font-medium mb-1 text-black">No items yet</p>
             <p className="text-sm text-gray-500">
@@ -283,11 +287,14 @@ export default function WardrobePage() {
                 href={`/wardrobe/${item.id}`}
                 className="bg-white rounded-2xl shadow-sm p-3 block hover:shadow-md transition"
                 >
-                <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2">
+                <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2 relative">
                     <img
-                    src={item.photoDataUrl}
+                    src={item.thumbnailDataUrl || item.photoDataUrl}
                     alt={item.name}
-                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover absolute inset-0"
+                    style={{ backgroundColor: '#e5e7eb' }}
                     />
                 </div>
                 <p className="text-sm font-medium truncate text-black">{item.name}</p>
