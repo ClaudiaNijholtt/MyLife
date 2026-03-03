@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  db, 
-  uid, 
   type ClothingCategory, 
   type ClothingSeason, 
   type ClothingStyle,
@@ -16,8 +14,12 @@ import {
   type JewelrySubcategory,
   type AccessorySubcategory,
   type FullBodySubcategory
-} from "@/lib/db";
-import { compressForWardrobe, fileToDataUrl } from "@/lib/image";
+} from "@/lib/types/wardrobe";
+import { generateId } from "@/lib/utils/helpers";
+import { compressForWardrobe } from "@/lib/image";
+import { createClient } from "@/lib/supabase/client";
+import { uploadWardrobePhoto } from "@/lib/cloud/storage";
+import { createClothingItem } from "@/lib/cloud/wardrobe";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -130,7 +132,8 @@ export default function AddWardrobeItemPage() {
   const [season, setSeason] = useState<ClothingSeason>("all");
   const [style, setStyle] = useState<ClothingStyle | undefined>("casual");
   const [size, setSize] = useState("");
-  const [washAfterWears, setWashAfterWears] = useState(1);
+  const [brand, setBrand] = useState("");
+  const [washAfterWears, setWashAfterWears] = useState(2);
   const [colorsRaw, setColorsRaw] = useState("");
   const [occasionsRaw, setOccasionsRaw] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -138,10 +141,15 @@ export default function AddWardrobeItemPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>("");
 
+  // Categories that don't need washing
+  const noWashCategories = ["shoes", "jewelry", "accessory"];
+  const needsWashing = !noWashCategories.includes(category);
+
   // Update default washAfterWears based on category
   useEffect(() => {
     if (category === "top") setWashAfterWears(2);
     else if (category === "bottom") setWashAfterWears(3);
+    else if (noWashCategories.includes(category)) setWashAfterWears(999);
     else setWashAfterWears(5);
   }, [category]);
 
@@ -181,32 +189,42 @@ async function onPickFile(f: File | null) {
     setError("");
 
     try {
-      const photoDataUrl = await fileToDataUrl(file);
-      const thumbnailDataUrl = photoDataUrl; // gebruik dezelfde, al gecomprimeerd
-      const now = new Date().toISOString();
+      const supabase = createClient();
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user) throw new Error("Not authenticated");
 
-      await db.clothingItems.put({
-        id: uid(),
+      const itemId = generateId();
+      const photo_path = await uploadWardrobePhoto({
+        userId: user.id,
+        itemId,
+        file,
+      });
+
+      await createClothingItem({
         name: name.trim(),
-        photoDataUrl,
-        thumbnailDataUrl,
+        photo_path,
         category,
-        subcategory,
-        colors: parseList(colorsRaw),
         season,
-        style,
-        size: size.trim() || undefined,
+        colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),
-        createdAt: now,
-        updatedAt: now,
-        laundryState: "clean",
-        wearsSinceWash: 0,
-        washAfterWears,
+        brand: brand.trim() || undefined,
+        laundry_state: "clean",
+        wears_since_wash: 0,
+        wash_after_wears: washAfterWears,
       });
 
       router.push("/wardrobe");
     } catch (e) {
-      setError("Saving failed. Try again.");
+      console.error("Save error:", e);
+      console.error("Error details:", JSON.stringify(e, null, 2));
+      if (e instanceof Error) {
+        console.error("Error message:", e.message);
+        console.error("Error stack:", e.stack);
+        setError(`Failed: ${e.message}`);
+      } else {
+        setError("Saving failed. Try again.");
+      }
       setSaving(false);
     }
   }
@@ -352,22 +370,34 @@ async function onPickFile(f: File | null) {
           </div>
 
           <div className="mb-4">
-            <label className="text-sm font-medium text-black">Wash after wears</label>
+            <label className="text-sm font-medium text-black">Brand</label>
             <input
-              type="number"
-              min="1"
-              max="20"
-              value={washAfterWears}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1 && val <= 20) {
-                  setWashAfterWears(val);
-                }
-              }}
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="e.g. Nike, Zara, H&M"
+              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
             />
-            <p className="text-xs text-gray-500 mt-1">How many times can you wear this before washing?</p>
           </div>
+
+          {needsWashing && (
+            <div className="mb-4">
+              <label className="text-sm font-medium text-black">Wash after wears</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={washAfterWears}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1 && val <= 20) {
+                    setWashAfterWears(val);
+                  }
+                }}
+                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+              />
+              <p className="text-xs text-gray-500 mt-1">How many times can you wear this before washing?</p>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="text-sm font-medium text-black">Occasions (comma separated)</label>
