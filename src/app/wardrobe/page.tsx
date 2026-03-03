@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { fetchClothingItems, type CloudClothingItem } from "@/lib/cloud/wardrobe";
+import { getWardrobePhotoSignedUrl } from "@/lib/cloud/storage";
+
+type CloudClothingItemWithUrl = CloudClothingItem & { photoUrl: string | null };
 
 export default function WardrobePage() {
-  const [items, setItems] = useState<CloudClothingItem[]>([]);
+  const [items, setItems] = useState<CloudClothingItemWithUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -21,10 +24,21 @@ export default function WardrobePage() {
         console.log("[Wardrobe] Starting to load items...");
         const startTime = performance.now();
         const all = await fetchClothingItems();
+        
+        // Get signed URLs for all items
+        const withUrls = await Promise.all(
+          all.map(async (it) => ({
+            ...it,
+            photoUrl: it.photo_path 
+              ? await getWardrobePhotoSignedUrl(it.photo_path, 3600)
+              : null,
+          }))
+        );
+        
         const endTime = performance.now();
         console.log(`[Wardrobe] Loaded ${all.length} items in ${(endTime - startTime).toFixed(2)}ms`);
         
-        setItems(all);
+        setItems(withUrls);
       } catch (error) {
         console.error("Error loading items:", error);
       } finally {
@@ -286,14 +300,20 @@ export default function WardrobePage() {
                 className="bg-white rounded-2xl shadow-sm p-3 block hover:shadow-md transition"
                 >
                 <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2 relative">
-                    <img
-                    src={item.photo_data_url}
-                    alt={item.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover absolute inset-0"
-                    style={{ backgroundColor: '#e5e7eb' }}
-                    />
+                    {item.photoUrl ? (
+                      <img
+                        src={item.photoUrl}
+                        alt={item.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover absolute inset-0"
+                        style={{ backgroundColor: '#e5e7eb' }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        No image
+                      </div>
+                    )}
                 </div>
                 <p className="text-sm font-medium truncate text-black">{item.name}</p>
                 <p className="text-xs text-gray-500">

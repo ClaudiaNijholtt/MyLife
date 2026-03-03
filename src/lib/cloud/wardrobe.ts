@@ -4,11 +4,12 @@ export type CloudClothingItem = {
   id: string;
   user_id: string;
   name: string;
-  photo_data_url: string;
+  photo_path: string;
   category: string;
   season: string;
   colors: string[];
   occasions: string[];
+  brand?: string | null;
   laundry_state: string;
   wears_since_wash: number;
   wash_after_wears: number;
@@ -30,11 +31,12 @@ export async function fetchClothingItems() {
 
 export async function createClothingItem(input: {
   name: string;
-  photo_data_url: string;
+  photo_path: string;
   category: string;
   season: string;
   colors: string[];
   occasions: string[];
+  brand?: string;
   laundry_state: string;
   wears_since_wash: number;
   wash_after_wears: number;
@@ -55,6 +57,46 @@ export async function createClothingItem(input: {
       created_at: now,
       updated_at: now,
     })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as CloudClothingItem;
+}
+
+export async function fetchClothingItem(id: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("clothing_items")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data as CloudClothingItem;
+}
+
+export async function deleteClothingItem(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("clothing_items")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function updateClothingItem(id: string, updates: Partial<CloudClothingItem>) {
+  const supabase = createClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("clothing_items")
+    .update({
+      ...updates,
+      updated_at: now,
+    })
+    .eq("id", id)
     .select("*")
     .single();
 
