@@ -15,13 +15,13 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const baseStyles = "px-4 py-2 rounded-full font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseStyles = "rounded-2xl px-4 py-3 min-h-12 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed";
   
   const variants = {
-    primary: "bg-black text-white hover:bg-gray-800 shadow",
-    secondary: "bg-white border border-gray-200 text-black hover:bg-gray-50",
-    danger: "bg-red-500 text-white hover:bg-red-600",
-    ghost: "text-black hover:bg-gray-100",
+    primary: "bg-slate-900 text-white shadow-sm hover:opacity-90",
+    secondary: "bg-white border border-slate-200 text-slate-900 shadow-sm hover:bg-slate-50",
+    danger: "bg-red-800 text-white shadow-sm hover:bg-red-600",
+    ghost: "text-slate-900 hover:bg-slate-100",
   };
 
   return (

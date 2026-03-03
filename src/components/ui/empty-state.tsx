@@ -18,13 +18,13 @@ export function EmptyState({
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm text-center">
       <div className="text-4xl mb-3">{icon}</div>
-      <p className="font-medium mb-1 text-black">{title}</p>
-      <p className="text-sm text-gray-500">{description}</p>
+      <p className="text-lg font-semibold text-slate-900 mb-1">{title}</p>
+      <p className="text-sm text-slate-500">{description}</p>
       
       {actionLabel && actionHref && (
         <Link
           href={actionHref}
-          className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition"
+          className="inline-block mt-4 rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-sm hover:opacity-90 transition"
         >
           {actionLabel}
         </Link>

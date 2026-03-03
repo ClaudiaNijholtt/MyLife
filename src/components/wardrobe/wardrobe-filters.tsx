@@ -2,18 +2,23 @@
 
 import { useMemo } from "react";
 import type { CloudClothingItem } from "@/lib/cloud/wardrobe";
+import { SlidersHorizontal } from "lucide-react";
 
 interface WardrobeFiltersProps {
   items: CloudClothingItem[];
   category: string;
   subcategory: string;
   season: string;
-  occasion: string;
+  color: string;
+  brand: string;
+  size: string;
   laundryState: string;
   onCategoryChange: (value: string) => void;
   onSubcategoryChange: (value: string) => void;
   onSeasonChange: (value: string) => void;
-  onOccasionChange: (value: string) => void;
+  onColorChange: (value: string) => void;
+  onBrandChange: (value: string) => void;
+  onSizeChange: (value: string) => void;
   onLaundryStateChange: (value: string) => void;
   onReset: () => void;
 }
@@ -23,12 +28,16 @@ export function WardrobeFilters({
   category,
   subcategory,
   season,
-  occasion,
+  color,
+  brand,
+  size,
   laundryState,
   onCategoryChange,
   onSubcategoryChange,
   onSeasonChange,
-  onOccasionChange,
+  onColorChange,
+  onBrandChange,
+  onSizeChange,
   onLaundryStateChange,
   onReset,
 }: WardrobeFiltersProps) {
@@ -55,13 +64,33 @@ export function WardrobeFilters({
     return Array.from(seasons).sort();
   }, [items]);
 
-  // Get unique occasions from all items
-  const availableOccasions = useMemo(() => {
-    const occasions = new Set<string>();
+  // Get unique colors from all items
+  const availableColors = useMemo(() => {
+    const colors = new Set<string>();
     items.forEach((it) => {
-      it.occasions.forEach((occ) => occasions.add(occ));
+      it.colors.forEach((color) => colors.add(color));
     });
-    return Array.from(occasions).sort();
+    return Array.from(colors).sort();
+  }, [items]);
+
+  // Get unique brands from all items
+  const availableBrands = useMemo(() => {
+    const brands = new Set(
+      items
+        .filter((it) => it.brand)
+        .map((it) => it.brand as string)
+    );
+    return Array.from(brands).sort();
+  }, [items]);
+
+  // Get unique sizes from all items
+  const availableSizes = useMemo(() => {
+    const sizes = new Set(
+      items
+        .filter((it) => it.size)
+        .map((it) => it.size as string)
+    );
+    return Array.from(sizes).sort();
   }, [items]);
 
   // Get unique laundry states from all items
@@ -71,17 +100,21 @@ export function WardrobeFilters({
   }, [items]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-4 mb-5">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <SlidersHorizontal className="h-5 w-5 text-slate-500" />
+        <h2 className="text-lg font-semibold text-slate-900">Filters</h2>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <div>
-          <label className="text-xs font-medium text-gray-600">Category</label>
+          <label className="text-xs font-medium text-slate-600 select-none">Category</label>
           <select
             value={category}
             onChange={(e) => {
               onCategoryChange(e.target.value);
               onSubcategoryChange("*");
             }}
-            className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black text-black"
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
           >
             <option value="*">All</option>
             {availableCategories.map((cat) => (
@@ -94,11 +127,11 @@ export function WardrobeFilters({
 
         {availableSubcategories.length > 0 && (
           <div>
-            <label className="text-xs font-medium text-gray-600">Subcategory</label>
+            <label className="text-xs font-medium text-slate-600 select-none">Subcategory</label>
             <select
               value={subcategory}
               onChange={(e) => onSubcategoryChange(e.target.value)}
-              className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black text-black"
+              className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
             >
               <option value="*">All</option>
               {availableSubcategories.map((sub) => (
@@ -111,11 +144,11 @@ export function WardrobeFilters({
         )}
 
         <div>
-          <label className="text-xs font-medium text-gray-600">Season</label>
+          <label className="text-xs font-medium text-slate-600 select-none">Season</label>
           <select
             value={season}
             onChange={(e) => onSeasonChange(e.target.value)}
-            className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black text-black"
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
           >
             <option value="*">All</option>
             {availableSeasons.map((s) => (
@@ -127,27 +160,59 @@ export function WardrobeFilters({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-600">Occasion</label>
+          <label className="text-xs font-medium text-slate-600 select-none">Color</label>
           <select
-            value={occasion}
-            onChange={(e) => onOccasionChange(e.target.value)}
-            className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black text-black"
+            value={color}
+            onChange={(e) => onColorChange(e.target.value)}
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
           >
             <option value="*">All</option>
-            {availableOccasions.map((occ) => (
-              <option key={occ} value={occ}>
-                {occ.charAt(0).toUpperCase() + occ.slice(1)}
+            {availableColors.map((c) => (
+              <option key={c} value={c}>
+                {c.charAt(0).toUpperCase() + c.slice(1)}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-600">Laundry</label>
+          <label className="text-xs font-medium text-slate-600 select-none">Brand</label>
+          <select
+            value={brand}
+            onChange={(e) => onBrandChange(e.target.value)}
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
+          >
+            <option value="*">All</option>
+            {availableBrands.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-slate-600 select-none">Size</label>
+          <select
+            value={size}
+            onChange={(e) => onSizeChange(e.target.value)}
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
+          >
+            <option value="*">All</option>
+            {availableSizes.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-slate-600 select-none">Laundry</label>
           <select
             value={laundryState}
             onChange={(e) => onLaundryStateChange(e.target.value)}
-            className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black text-black"
+            className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
           >
             <option value="*">All</option>
             {availableLaundryStates.map((state) => (
@@ -159,12 +224,12 @@ export function WardrobeFilters({
         </div>
       </div>
 
-      <div className="mt-3 flex justify-end">
+      <div className="mt-4 flex justify-end">
         <button
           onClick={onReset}
-          className="text-sm font-medium underline text-black"
+          className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"
         >
-          Reset filters
+          Reset all
         </button>
       </div>
     </div>

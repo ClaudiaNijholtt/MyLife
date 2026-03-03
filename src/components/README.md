@@ -60,7 +60,7 @@ components/
 - Optimized with lazy image loading
 
 ### Wardrobe Filters (`wardrobe/wardrobe-filters.tsx`)
-- Complete filter panel with category, subcategory, season, occasion, laundry state
+- Complete filter panel with category, subcategory, season, color, brand, size, laundry state
 - Automatically extracts unique values from items
 - Smart subcategory display (only shows when category selected)
 - Reset filters button

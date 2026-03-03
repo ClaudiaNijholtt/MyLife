@@ -24,6 +24,16 @@ ALTER TABLE clothing_items
   ADD COLUMN brand TEXT;
 ```
 
+### 3. Add subcategory + size and remove occasions
+```sql
+ALTER TABLE clothing_items
+  ADD COLUMN IF NOT EXISTS subcategory TEXT,
+  ADD COLUMN IF NOT EXISTS size TEXT;
+
+ALTER TABLE clothing_items
+  DROP COLUMN IF EXISTS occasions;
+```
+
 ## Initial Schema
 
 If you need to create the table from scratch:
@@ -35,10 +45,11 @@ CREATE TABLE clothing_items (
   name TEXT NOT NULL,
   photo_path TEXT NOT NULL,
   category TEXT NOT NULL,
+  subcategory TEXT,
   season TEXT NOT NULL,
   colors TEXT[] NOT NULL DEFAULT '{}',
-  occasions TEXT[] NOT NULL DEFAULT '{}',
   brand TEXT,
+  size TEXT,
   laundry_state TEXT NOT NULL DEFAULT 'clean',
   wears_since_wash INTEGER NOT NULL DEFAULT 0,
   wash_after_wears INTEGER NOT NULL DEFAULT 3,

@@ -9,12 +9,12 @@ export function Input({ label, error, className = "", ...props }: InputProps) {
   return (
     <div>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-slate-600 mb-1 select-none">
           {label}
         </label>
       )}
       <input
-        className={`w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black ${
+        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
           error ? "border-red-500" : ""
         } ${className}`}
         {...props}
@@ -33,12 +33,12 @@ export function Textarea({ label, error, className = "", ...props }: TextareaPro
   return (
     <div>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-slate-600 mb-1 select-none">
           {label}
         </label>
       )}
       <textarea
-        className={`w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black ${
+        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
           error ? "border-red-500" : ""
         } ${className}`}
         {...props}
@@ -58,12 +58,12 @@ export function Select({ label, error, className = "", children, ...props }: Sel
   return (
     <div>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-medium text-slate-600 mb-1 select-none">
           {label}
         </label>
       )}
       <select
-        className={`w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black ${
+        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
           error ? "border-red-500" : ""
         } ${className}`}
         {...props}

@@ -20,6 +20,7 @@ import { compressForWardrobe } from "@/lib/image";
 import { createClient } from "@/lib/supabase/client";
 import { uploadWardrobePhoto } from "@/lib/cloud/storage";
 import { createClothingItem } from "@/lib/cloud/wardrobe";
+import { ArrowLeft, Plus } from "lucide-react";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -135,7 +136,6 @@ export default function AddWardrobeItemPage() {
   const [brand, setBrand] = useState("");
   const [washAfterWears, setWashAfterWears] = useState(2);
   const [colorsRaw, setColorsRaw] = useState("");
-  const [occasionsRaw, setOccasionsRaw] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -208,8 +208,8 @@ async function onPickFile(f: File | null) {
         subcategory: subcategory || undefined,
         season,
         colors: parseList(colorsRaw),
-        occasions: parseList(occasionsRaw),
         brand: brand.trim() || undefined,
+        size: size.trim() || undefined,
         laundry_state: "clean",
         wears_since_wash: 0,
         wash_after_wears: washAfterWears,
@@ -231,50 +231,51 @@ async function onPickFile(f: File | null) {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100">
+    <main className="min-h-screen">
       <div className="mx-auto max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-black">Add item</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Add item</h1>
           <button
             onClick={() => router.push("/wardrobe")}
-            className="text-sm font-medium underline text-black"
+            className="flex items-center gap-2 min-h-12 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
           >
-            Back
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden md:inline">Back</span>
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-5">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="mb-4">
-            <label className="text-sm font-medium text-black">Photo</label>
+            <label className="text-xs font-medium text-slate-600 select-none">Photo</label>
             <div className="mt-2">
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-black"
+                className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
               />
             </div>
 
             {preview ? (
-              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-gray-200">
+              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-sm">
                 <img src={preview} alt="Preview" className="w-full h-full object-cover" />
               </div>
             ) : null}
           </div>
 
           <div className="mb-4">
-            <label className="text-sm font-medium text-black">Name</label>
+            <label className="text-xs font-medium text-slate-600 select-none">Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Black blazer"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="text-sm font-medium text-black">Category</label>
+              <label className="text-xs font-medium text-slate-600 select-none">Category</label>
               <select
                 value={category}
                 onChange={(e) => {
@@ -290,7 +291,7 @@ async function onPickFile(f: File | null) {
                   else if (newCategory === "full-body") setSubcategory("dress");
                   else setSubcategory("other");
                 }}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
               >
                 {categories.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -302,11 +303,11 @@ async function onPickFile(f: File | null) {
 
             {subcategoryOptions.length > 0 && (
               <div>
-                <label className="text-sm font-medium text-black">Subcategory</label>
+                <label className="text-xs font-medium text-slate-600 select-none">Subcategory</label>
                 <select
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value as ClothingSubcategory)}
-                  className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
                 >
                   {subcategoryOptions.map((sc) => (
                     <option key={sc.value} value={sc.value}>
@@ -320,11 +321,11 @@ async function onPickFile(f: File | null) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="text-sm font-medium text-black">Season</label>
+              <label className="text-xs font-medium text-slate-600 select-none">Season</label>
               <select
                 value={season}
                 onChange={(e) => setSeason(e.target.value as ClothingSeason)}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
               >
                 {seasons.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -335,11 +336,11 @@ async function onPickFile(f: File | null) {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-black">Style</label>
+              <label className="text-xs font-medium text-slate-600 select-none">Style</label>
               <select
                 value={style}
                 onChange={(e) => setStyle(e.target.value as ClothingStyle)}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
               >
                 {styles.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -351,38 +352,38 @@ async function onPickFile(f: File | null) {
           </div>
 
           <div className="mb-4">
-            <label className="text-sm font-medium text-black">Colors (comma separated)</label>
+            <label className="text-xs font-medium text-slate-600 select-none">Colors (comma separated)</label>
             <input
               value={colorsRaw}
               onChange={(e) => setColorsRaw(e.target.value)}
               placeholder="black, white"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
             />
           </div>
 
           <div className="mb-4">
-            <label className="text-sm font-medium text-black">Size</label>
+            <label className="text-xs font-medium text-slate-600 select-none">Size</label>
             <input
               value={size}
               onChange={(e) => setSize(e.target.value)}
               placeholder="e.g. S, M, L, XL, 38, 40"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
             />
           </div>
 
           <div className="mb-4">
-            <label className="text-sm font-medium text-black">Brand</label>
+            <label className="text-xs font-medium text-slate-600 select-none">Brand</label>
             <input
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder="e.g. Nike, Zara, H&M"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
             />
           </div>
 
           {needsWashing && (
             <div className="mb-4">
-              <label className="text-sm font-medium text-black">Wash after wears</label>
+              <label className="text-xs font-medium text-slate-600 select-none">Wash after wears</label>
               <input
                 type="number"
                 min="1"
@@ -394,30 +395,27 @@ async function onPickFile(f: File | null) {
                     setWashAfterWears(val);
                   }
                 }}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
               />
-              <p className="text-xs text-gray-500 mt-1">How many times can you wear this before washing?</p>
+              <p className="text-xs text-slate-500 mt-1">How many times can you wear this before washing?</p>
             </div>
           )}
-
-          <div className="mb-4">
-            <label className="text-sm font-medium text-black">Occasions (comma separated)</label>
-            <input
-              value={occasionsRaw}
-              onChange={(e) => setOccasionsRaw(e.target.value)}
-              placeholder="casual, work, party"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
-            />
-          </div>
 
           {error ? <p className="text-sm text-red-600 mb-3">{error}</p> : null}
 
           <button
             onClick={onSave}
             disabled={!canSave}
-            className="w-full bg-black text-white py-3 rounded-2xl shadow disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-sm hover:opacity-90 transition disabled:opacity-40"
           >
-            {saving ? "Saving..." : "Save item"}
+            {saving ? (
+              "Saving..."
+            ) : (
+              <>
+                <Plus className="h-5 w-5" />
+                Save item
+              </>
+            )}
           </button>
         </div>
       </div>
