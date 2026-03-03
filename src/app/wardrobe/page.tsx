@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { WardrobeFilters } from "@/components/wardrobe/wardrobe-filters";
 import { WardrobeGrid } from "@/components/wardrobe/wardrobe-card";
+import { Plus, SlidersHorizontal } from "lucide-react";
 
 type CloudClothingItemWithUrl = CloudClothingItem & { photoUrl: string | null };
 
@@ -19,7 +20,9 @@ export default function WardrobePage() {
   const [category, setCategory] = useState<string>("*");
   const [subcategory, setSubcategory] = useState<string>("*");
   const [season, setSeason] = useState<string>("*");
-  const [occasion, setOccasion] = useState<string>("*");
+  const [color, setColor] = useState<string>("*");
+  const [brand, setBrand] = useState<string>("*");
+  const [size, setSize] = useState<string>("*");
   const [laundryState, setLaundryState] = useState<string>("*");
 
   useEffect(() => {
@@ -65,7 +68,8 @@ export default function WardrobePage() {
           it.category,
           it.season,
           it.colors.join(" "),
-          it.occasions.join(" "),
+          it.brand || "",
+          it.size || "",
         ]
           .join(" ")
           .toLowerCase();
@@ -88,9 +92,19 @@ export default function WardrobePage() {
       result = result.filter((it) => it.season === season);
     }
 
-    // Apply occasion filter
-    if (occasion !== "*") {
-      result = result.filter((it) => it.occasions.includes(occasion));
+    // Apply color filter
+    if (color !== "*") {
+      result = result.filter((it) => it.colors.includes(color));
+    }
+
+    // Apply brand filter
+    if (brand !== "*") {
+      result = result.filter((it) => it.brand === brand);
+    }
+
+    // Apply size filter
+    if (size !== "*") {
+      result = result.filter((it) => it.size === size);
     }
 
     // Apply laundry state filter
@@ -99,33 +113,35 @@ export default function WardrobePage() {
     }
 
     return result;
-  }, [items, query, category, subcategory, season, occasion, laundryState]);
+  }, [items, query, category, subcategory, season, color, brand, size, laundryState]);
 
   return (
-    <main className="min-h-screen bg-gray-100">
+    <main className="min-h-screen">
       <div className="mx-auto max-w-5xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-black">My Wardrobe</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-slate-900">My Wardrobe</h1>
           <Link
             href="/wardrobe/add"
-            className="bg-black text-white px-4 py-2 rounded-full shadow hover:scale-[1.02] transition"
+            className="flex items-center gap-2 rounded-2xl bg-slate-900 text-white px-4 py-3 min-h-12 text-sm font-medium shadow-sm hover:opacity-90 transition"
           >
-            + Add item
+            <Plus className="h-5 w-5" />
+            <span className="hidden md:inline">Add item</span>
           </Link>
         </div>
 
-        <div className="mb-5 flex gap-2">
+        <div className="mb-4 flex gap-3">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search (name, color, occasion...)"
-            className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
+            placeholder="Search (name, color, brand, size...)"
+            className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900"
           />
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="bg-white border border-gray-200 px-4 py-2 rounded-2xl hover:bg-gray-50 transition text-black font-medium"
+            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-3 min-h-12 rounded-2xl hover:bg-slate-50 transition text-slate-900 text-sm font-medium shadow-sm"
           >
-            {showFilters ? "Hide" : "Filter"}
+            <SlidersHorizontal className="h-5 w-5" />
+            <span className="hidden md:inline">{showFilters ? "Hide" : "Filter"}</span>
           </button>
         </div>
 
@@ -134,41 +150,51 @@ export default function WardrobePage() {
             <Stats />
         </div> */}
 
-        {showFilters && (
+        <div 
+          className={`mb-4 overflow-hidden transition-all duration-1000 ease-in-out ${
+            showFilters ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
           <WardrobeFilters
             items={items}
             category={category}
             subcategory={subcategory}
             season={season}
-            occasion={occasion}
+            color={color}
+            brand={brand}
+            size={size}
             laundryState={laundryState}
             onCategoryChange={setCategory}
             onSubcategoryChange={setSubcategory}
             onSeasonChange={setSeason}
-            onOccasionChange={setOccasion}
+            onColorChange={setColor}
+            onBrandChange={setBrand}
+            onSizeChange={setSize}
             onLaundryStateChange={setLaundryState}
             onReset={() => {
               setCategory("*");
               setSubcategory("*");
               setSeason("*");
-              setOccasion("*");
+              setColor("*");
+              setBrand("*");
+              setSize("*");
               setLaundryState("*");
             }}
           />
-        )}
+        </div>
 
         {loading ? (
           <PageLoader />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*" 
+            title={query || category !== "*" || season !== "*" || color !== "*" || brand !== "*" || size !== "*" || laundryState !== "*" 
               ? "No matching items" 
               : "No items yet"}
-            description={query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*"
+            description={query || category !== "*" || season !== "*" || color !== "*" || brand !== "*" || size !== "*" || laundryState !== "*"
               ? "Try adjusting your search or filters."
               : "Add your first clothing item to start building your wardrobe."}
-            actionLabel={!(query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*") ? "Add item" : undefined}
-            actionHref={!(query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*") ? "/wardrobe/add" : undefined}
+            actionLabel={!(query || category !== "*" || season !== "*" || color !== "*" || brand !== "*" || size !== "*" || laundryState !== "*") ? "Add item" : undefined}
+            actionHref={!(query || category !== "*" || season !== "*" || color !== "*" || brand !== "*" || size !== "*" || laundryState !== "*") ? "/wardrobe/add" : undefined}
             icon="👔"
           />
         ) : (

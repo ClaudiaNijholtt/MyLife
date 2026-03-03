@@ -105,8 +105,8 @@ export type ClothingItem = {
   subcategory?: string | null;
   season: string;
   colors: string[];
-  occasions: string[];
   brand?: string | null;
+  size?: string | null;
   laundry_state: string;
   wears_since_wash: number;
   wash_after_wears: number;

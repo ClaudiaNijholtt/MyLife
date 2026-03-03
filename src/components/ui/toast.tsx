@@ -47,9 +47,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={toast.id}
             className={`px-4 py-3 rounded-2xl shadow-lg text-white font-medium animate-[slideIn_0.2s_ease-out] ${
               toast.type === "success"
-                ? "bg-green-500"
+                ? "bg-[#b4debd]"
                 : toast.type === "error"
-                ? "bg-red-500"
+                ? "bg-red-800"
                 : "bg-black"
             }`}
           >

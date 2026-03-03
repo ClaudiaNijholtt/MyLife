@@ -10,9 +10,9 @@ export function WardrobeCard({ item, showLaundryState = true }: WardrobeCardProp
   return (
     <Link
       href={`/wardrobe/${item.id}`}
-      className="bg-white rounded-2xl shadow-sm p-3 block hover:shadow-md transition"
+      className="bg-white rounded-2xl shadow-sm p-5 block hover:shadow-md transition"
     >
-      <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2 relative">
+      <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 mb-3 relative">
         {item.photoUrl ? (
           <img
             src={item.photoUrl}
@@ -20,23 +20,23 @@ export function WardrobeCard({ item, showLaundryState = true }: WardrobeCardProp
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover absolute inset-0"
-            style={{ backgroundColor: '#e5e7eb' }}
+            style={{ backgroundColor: '#f1f5f9' }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
+          <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
             No image
           </div>
         )}
       </div>
       
-      <p className="text-sm font-medium truncate text-black">{item.name}</p>
-      <p className="text-xs text-gray-500">
+      <p className="text-sm font-medium truncate text-slate-900">{item.name}</p>
+      <p className="text-xs text-slate-500">
         {item.category} • {item.season}
       </p>
       
       {showLaundryState && (
-        <div className="mt-1">
-          <span className="inline-block text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+        <div className="mt-2">
+          <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-1 text-xs font-medium">
             {item.laundry_state ?? "clean"}
           </span>
         </div>

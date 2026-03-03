@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { SimilarItemsSlider } from "@/components/wardrobe/similar-items-slider";
 import { useToast } from "@/components/ui/toast";
+import { ArrowLeft, Edit2, Trash2, Check, WashingMachine, Sparkles } from "lucide-react";
 
 type CloudClothingItemWithUrl = CloudClothingItem & { photoUrl: string | null };
 
@@ -144,7 +145,7 @@ export default function WardrobeItemDetailPage() {
 
   if (!item) {
     return (
-      <main className="min-h-screen bg-gray-100 p-6">
+      <main className="min-h-screen p-6">
         <EmptyState
           title="Item not found"
           description="This item doesn't exist or you don't have access to it."
@@ -157,14 +158,15 @@ export default function WardrobeItemDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100">
+    <main className="min-h-screen">
       <div className="mx-auto max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <button 
             onClick={() => router.push("/wardrobe")} 
-            className="text-sm font-medium underline text-black hover:text-gray-600"
+            className="flex items-center gap-2 min-h-12 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
           >
-            ← Back
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden md:inline">Back</span>
           </button>
 
           <div className="flex flex-wrap gap-2">
@@ -174,7 +176,10 @@ export default function WardrobeItemDetailPage() {
               loading={actionLoading === "worn"}
               className={wornTodayClicked ? "bg-green-500 hover:bg-green-600" : isWornToday ? "bg-green-100 text-green-800 border-green-300" : ""}
             >
-              {wornTodayClicked ? "✓ Marked!" : isWornToday ? "Worn today ✓" : "Worn today"}
+              <Check className="h-4 w-4" />
+              <span className="hidden md:inline">
+                {wornTodayClicked ? "Marked!" : isWornToday ? "Worn today" : "Worn today"}
+              </span>
             </Button>
 
             <Button
@@ -182,7 +187,8 @@ export default function WardrobeItemDetailPage() {
               onClick={onSendToLaundry}
               loading={actionLoading === "laundry"}
             >
-              Send to laundry
+              <WashingMachine className="h-4 w-4" />
+              <span className="hidden md:inline">Send to laundry</span>
             </Button>
 
             <Button
@@ -190,14 +196,16 @@ export default function WardrobeItemDetailPage() {
               onClick={onMarkClean}
               loading={actionLoading === "clean"}
             >
-              Mark as clean
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden md:inline">Mark as clean</span>
             </Button>
 
             <Button
               variant="secondary"
               onClick={() => router.push(`/wardrobe/${id}/edit`)}
             >
-              Edit
+              <Edit2 className="h-4 w-4" />
+              <span className="hidden md:inline">Edit</span>
             </Button>
 
             <Button
@@ -205,13 +213,14 @@ export default function WardrobeItemDetailPage() {
               onClick={onDelete}
               loading={actionLoading === "delete"}
             >
-              Delete
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden md:inline">Delete</span>
             </Button>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-4">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 mb-4">
             {item.photoUrl ? (
               <img 
                 src={item.photoUrl} 
@@ -221,48 +230,57 @@ export default function WardrobeItemDetailPage() {
                 className="w-full h-full object-cover" 
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
                 No image
               </div>
             )}
           </div>
 
-          <h1 className="text-2xl font-bold mb-1 text-black">{item.name}</h1>
-          <p className="text-sm text-gray-500 mb-4">
+          <h1 className="text-2xl font-bold mb-1 text-slate-900">{item.name}</h1>
+          <p className="text-sm text-slate-500 mb-4">
             {item.category} • {item.season}
           </p>
 
           <div className="space-y-3 text-sm">
-            <div>
-              <p className="font-medium text-black">Colors</p>
-              <p className="text-gray-600">{item.colors.length ? item.colors.join(", ") : "-"}</p>
-            </div>
-
-            {item.brand && (
+            {item.subcategory && (
               <div>
-                <p className="font-medium text-black">Brand</p>
-                <p className="text-gray-600">{item.brand}</p>
+                <p className="font-medium text-slate-900">Subcategory</p>
+                <p className="text-slate-600">{item.subcategory}</p>
               </div>
             )}
 
             <div>
-              <p className="font-medium text-black">Wash after wears</p>
-              <p className="text-gray-600">{item.wash_after_wears} {item.wash_after_wears === 1 ? "wear" : "wears"}</p>
+              <p className="font-medium text-slate-900">Colors</p>
+              <p className="text-slate-600">{item.colors.length ? item.colors.join(", ") : "-"}</p>
+            </div>
+
+            {item.brand && (
+              <div>
+                <p className="font-medium text-slate-900">Brand</p>
+                <p className="text-slate-600">{item.brand}</p>
+              </div>
+            )}
+
+            {item.size && (
+              <div>
+                <p className="font-medium text-slate-900">Size</p>
+                <p className="text-slate-600">{item.size}</p>
+              </div>
+            )}
+
+            <div>
+              <p className="font-medium text-slate-900">Wash after wears</p>
+              <p className="text-slate-600">{item.wash_after_wears} {item.wash_after_wears === 1 ? "wear" : "wears"}</p>
             </div>
 
             <div>
-              <p className="font-medium text-black">Occasions</p>
-              <p className="text-gray-600">{item.occasions.length ? item.occasions.join(", ") : "-"}</p>
+              <p className="font-medium text-slate-900">Last worn</p>
+              <p className="text-slate-600">{item.last_worn_at ? new Date(item.last_worn_at).toLocaleDateString() : "-"}</p>
             </div>
 
             <div>
-              <p className="font-medium text-black">Last worn</p>
-              <p className="text-gray-600">{item.last_worn_at ? new Date(item.last_worn_at).toLocaleDateString() : "-"}</p>
-            </div>
-
-            <div>
-              <p className="font-medium text-black">Laundry</p>
-              <p className="text-gray-600">
+              <p className="font-medium text-slate-900">Laundry</p>
+              <p className="text-slate-600">
                 {item.laundry_state ?? "-"} • wears since wash: {item.wears_since_wash ?? 0} / {item.wash_after_wears ?? "-"}
               </p>
             </div>

@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { ArrowLeft, Save } from "lucide-react";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -128,12 +129,12 @@ export default function EditWardrobeItemPage() {
 
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
+  const [size, setSize] = useState("");
   const [category, setCategory] = useState<ClothingCategory>("top");
   const [subcategory, setSubcategory] = useState<ClothingSubcategory | undefined>(undefined);
   const [season, setSeason] = useState<ClothingSeason>("all");
   const [washAfterWears, setWashAfterWears] = useState(3);
   const [colorsRaw, setColorsRaw] = useState("");
-  const [occasionsRaw, setOccasionsRaw] = useState("");
   const [preview, setPreview] = useState<string>("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -145,12 +146,12 @@ export default function EditWardrobeItemPage() {
         
         setName(found.name);
         setBrand(found.brand || "");
+        setSize(found.size || "");
         setCategory(found.category as ClothingCategory);
         setSubcategory(found.subcategory as ClothingSubcategory | undefined);
         setSeason(found.season as ClothingSeason);
         setWashAfterWears(found.wash_after_wears);
         setColorsRaw(found.colors.join(", "));
-        setOccasionsRaw(found.occasions.join(", "));
         setOriginalPhotoPath(found.photo_path);
         
         // Get signed URL for preview
@@ -232,12 +233,12 @@ export default function EditWardrobeItemPage() {
       await updateClothingItem(id, {
         name: name.trim(),
         brand: brand.trim() || null,
+        size: size.trim() || null,
         photo_path,
         category,
         subcategory: subcategory || null,
         season,
         colors: parseList(colorsRaw),
-        occasions: parseList(occasionsRaw),
         wash_after_wears: effectiveWashCycle,
       });
 
@@ -256,7 +257,7 @@ export default function EditWardrobeItemPage() {
 
   if (!name && !loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-6">
+      <main className="min-h-screen p-6">
         <EmptyState
           title="Item not found"
           description="This item doesn't exist or you don't have access to it."
@@ -269,30 +270,31 @@ export default function EditWardrobeItemPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100">
+    <main className="min-h-screen">
       <div className="mx-auto max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-black">Edit item</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Edit item</h1>
           <button 
             onClick={() => router.push(`/wardrobe/${id}`)} 
-            className="text-sm font-medium underline text-black hover:text-gray-600"
+            className="flex items-center gap-2 min-h-12 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
           >
-            Cancel
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden md:inline">Cancel</span>
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Photo</label>
+            <label className="block text-xs font-medium text-slate-600 mb-2 select-none">Photo</label>
             <input
               type="file"
               accept="image/*"
+              className="touch-manipulation block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
               onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
             />
 
             {preview && (
-              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-gray-200 max-w-xs">
+              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-xs">
                 <img src={preview} alt="Preview" className="w-full h-full object-cover" />
               </div>
             )}
@@ -311,6 +313,13 @@ export default function EditWardrobeItemPage() {
             value={brand}
             onChange={(e) => setBrand(e.target.value)}
             placeholder="e.g. Nike, Zara, H&M"
+          />
+
+          <Input
+            label="Size (optional)"
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            placeholder="e.g. S, M, L, XL, 38"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -372,20 +381,14 @@ export default function EditWardrobeItemPage() {
             placeholder="black, white, red"
           />
 
-          <Input
-            label="Occasions (comma separated)"
-            value={occasionsRaw}
-            onChange={(e) => setOccasionsRaw(e.target.value)}
-            placeholder="casual, work, party"
-          />
-
           {category !== "shoes" && category !== "jewelry" && category !== "accessory" && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 select-none">
                 Wash after wears
               </label>
               <input
                 type="number"
+                className="touch-manipulation w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
                 min="1"
                 max="20"
                 value={washAfterWears}
@@ -395,7 +398,6 @@ export default function EditWardrobeItemPage() {
                     setWashAfterWears(val);
                   }
                 }}
-                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
               />
               <p className="text-xs text-gray-500 mt-1">
                 How many times can you wear this before washing?
