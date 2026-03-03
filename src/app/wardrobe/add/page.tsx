@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  db, 
-  uid, 
   type ClothingCategory, 
   type ClothingSeason, 
   type ClothingStyle,
@@ -18,6 +16,7 @@ import {
   type FullBodySubcategory
 } from "@/lib/db";
 import { compressForWardrobe, fileToDataUrl } from "@/lib/image";
+import { createClothingItem } from "@/lib/cloud/wardrobe";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -181,27 +180,18 @@ async function onPickFile(f: File | null) {
     setError("");
 
     try {
-      const photoDataUrl = await fileToDataUrl(file);
-      const thumbnailDataUrl = photoDataUrl; // gebruik dezelfde, al gecomprimeerd
-      const now = new Date().toISOString();
+      const photo_data_url = await fileToDataUrl(file);
 
-      await db.clothingItems.put({
-        id: uid(),
+      await createClothingItem({
         name: name.trim(),
-        photoDataUrl,
-        thumbnailDataUrl,
+        photo_data_url,
         category,
-        subcategory,
-        colors: parseList(colorsRaw),
         season,
-        style,
-        size: size.trim() || undefined,
+        colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),
-        createdAt: now,
-        updatedAt: now,
-        laundryState: "clean",
-        wearsSinceWash: 0,
-        washAfterWears,
+        laundry_state: "clean",
+        wears_since_wash: 0,
+        wash_after_wears: washAfterWears,
       });
 
       router.push("/wardrobe");

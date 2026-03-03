@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { db, type ClothingItem } from "@/lib/db";
+import { fetchClothingItems, type CloudClothingItem } from "@/lib/cloud/wardrobe";
 
 export default function WardrobePage() {
-  const [items, setItems] = useState<ClothingItem[]>([]);
+  const [items, setItems] = useState<CloudClothingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -20,13 +20,11 @@ export default function WardrobePage() {
       try {
         console.log("[Wardrobe] Starting to load items...");
         const startTime = performance.now();
-        const all = await db.clothingItems.toArray();
+        const all = await fetchClothingItems();
         const endTime = performance.now();
         console.log(`[Wardrobe] Loaded ${all.length} items in ${(endTime - startTime).toFixed(2)}ms`);
         
-        setItems(all.sort((a, b) => {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }));
+        setItems(all);
       } catch (error) {
         console.error("Error loading items:", error);
       } finally {
@@ -79,7 +77,7 @@ export default function WardrobePage() {
 
     // Apply laundry state filter
     if (laundryState !== "*") {
-      result = result.filter((it) => it.laundryState === laundryState);
+      result = result.filter((it) => it.laundry_state === laundryState);
     }
 
     return result;
@@ -119,7 +117,7 @@ export default function WardrobePage() {
 
   // Get unique laundry states from all items
   const availableLaundryStates = useMemo(() => {
-    const states = new Set(items.map((it) => it.laundryState || "clean"));
+    const states = new Set(items.map((it) => it.laundry_state || "clean"));
     return Array.from(states).sort();
   }, [items]);
 
@@ -289,7 +287,7 @@ export default function WardrobePage() {
                 >
                 <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2 relative">
                     <img
-                    src={item.thumbnailDataUrl || item.photoDataUrl}
+                    src={item.photo_data_url}
                     alt={item.name}
                     loading="lazy"
                     decoding="async"
@@ -303,7 +301,7 @@ export default function WardrobePage() {
                 </p>
                 <div className="mt-1">
                     <span className="inline-block text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                        {item.laundryState ?? "clean"}
+                        {item.laundry_state ?? "clean"}
                     </span>
                 </div>
                 </Link>
