@@ -103,17 +103,6 @@ const fullBodySubcategories: { value: FullBodySubcategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-const styles: { value: ClothingStyle; label: string }[] = [
-  { value: "casual", label: "Casual" },
-  { value: "classy", label: "Classy" },
-  { value: "sporty", label: "Sporty" },
-  { value: "formal", label: "Formal" },
-  { value: "bohemian", label: "Bohemian" },
-  { value: "streetwear", label: "Streetwear" },
-  { value: "minimalist", label: "Minimalist" },
-  { value: "other", label: "Other" },
-];
-
 const seasons: { value: ClothingSeason; label: string }[] = [
   { value: "summer", label: "Summer" },
   { value: "winter", label: "Winter" },
