@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
-  db, 
   type ClothingCategory, 
   type ClothingSeason, 
-  type ClothingStyle,
   type ClothingSubcategory,
   type TopSubcategory,
   type BottomSubcategory,
@@ -15,9 +13,16 @@ import {
   type JewelrySubcategory,
   type AccessorySubcategory,
   type FullBodySubcategory,
-  type ClothingItem 
-} from "@/lib/db";
-import { fileToDataUrl } from "@/lib/file";
+} from "@/lib/types/wardrobe";
+import { compressForWardrobe } from "@/lib/image";
+import { fetchClothingItem, updateClothingItem } from "@/lib/cloud/wardrobe";
+import { getWardrobePhotoSignedUrl, uploadWardrobePhoto, deleteWardrobePhoto } from "@/lib/cloud/storage";
+import { createClient } from "@/lib/supabase/client";
+import { PageLoader } from "@/components/ui/loading";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input, Select } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -98,17 +103,6 @@ const fullBodySubcategories: { value: FullBodySubcategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-const styles: { value: ClothingStyle; label: string }[] = [
-  { value: "casual", label: "Casual" },
-  { value: "classy", label: "Classy" },
-  { value: "sporty", label: "Sporty" },
-  { value: "formal", label: "Formal" },
-  { value: "bohemian", label: "Bohemian" },
-  { value: "streetwear", label: "Streetwear" },
-  { value: "minimalist", label: "Minimalist" },
-  { value: "other", label: "Other" },
-];
-
 const seasons: { value: ClothingSeason; label: string }[] = [
   { value: "summer", label: "Summer" },
   { value: "winter", label: "Winter" },
@@ -126,45 +120,52 @@ export default function EditWardrobeItemPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
+  const { showToast } = useToast();
+  const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
-  const [item, setItem] = useState<ClothingItem | null>(null);
+  const [originalPhotoPath, setOriginalPhotoPath] = useState<string>("");
 
   const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
   const [category, setCategory] = useState<ClothingCategory>("top");
   const [subcategory, setSubcategory] = useState<ClothingSubcategory | undefined>(undefined);
   const [season, setSeason] = useState<ClothingSeason>("all");
-  const [style, setStyle] = useState<ClothingStyle | undefined>(undefined);
-  const [size, setSize] = useState("");
+  const [washAfterWears, setWashAfterWears] = useState(3);
   const [colorsRaw, setColorsRaw] = useState("");
   const [occasionsRaw, setOccasionsRaw] = useState("");
   const [preview, setPreview] = useState<string>("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
-      const found = await db.clothingItems.get(id);
-      if (!found) {
-        setItem(null);
+      try {
+        const found = await fetchClothingItem(id);
+        
+        setName(found.name);
+        setBrand(found.brand || "");
+        setCategory(found.category as ClothingCategory);
+        setSubcategory(found.subcategory as ClothingSubcategory | undefined);
+        setSeason(found.season as ClothingSeason);
+        setWashAfterWears(found.wash_after_wears);
+        setColorsRaw(found.colors.join(", "));
+        setOccasionsRaw(found.occasions.join(", "));
+        setOriginalPhotoPath(found.photo_path);
+        
+        // Get signed URL for preview
+        if (found.photo_path) {
+          const photoUrl = await getWardrobePhotoSignedUrl(found.photo_path, 3600);
+          setPreview(photoUrl);
+        }
+      } catch (error) {
+        console.error("Error loading item:", error);
+        showToast("Failed to load item", "error");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setItem(found);
-      setName(found.name);
-      setCategory(found.category);
-      setSubcategory(found.subcategory);
-      setSeason(found.season);
-      setStyle(found.style);
-      setSize(found.size || "");
-      setColorsRaw(found.colors.join(", "));
-      setOccasionsRaw(found.occasions.join(", "));
-      setPreview(found.photoDataUrl);
-      setLoading(false);
     })();
-  }, [id]);
+  }, [id, showToast]);
 
   const subcategoryOptions = useMemo(() => {
     switch (category) {
@@ -184,66 +185,85 @@ export default function EditWardrobeItemPage() {
   }, [name, saving]);
 
   async function onPickFile(f: File | null) {
-    setError("");
-    setNewFile(f);
+    setNewFile(null);
     if (!f) return;
 
-    const dataUrl = await fileToDataUrl(f);
-    setPreview(dataUrl);
+    try {
+      const { file: compressed, previewUrl } = await compressForWardrobe(f);
+      setNewFile(compressed);
+      setPreview(previewUrl);
+    } catch (error) {
+      console.error("Error compressing file:", error);
+      showToast("Failed to process image", "error");
+    }
   }
 
   async function onSave() {
-    if (!item || !canSave) return;
+    if (!canSave) return;
     setSaving(true);
-    setError("");
 
     try {
-      const now = new Date().toISOString();
-      const photoDataUrl = preview;
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth.user;
+      if (!user) throw new Error("Not authenticated");
 
-      await db.clothingItems.put({
-        ...item,
+      let photo_path = originalPhotoPath;
+
+      // Upload new photo if changed
+      if (newFile) {
+        // Delete old photo first
+        if (originalPhotoPath) {
+          await deleteWardrobePhoto(originalPhotoPath);
+        }
+        // Upload new photo
+        photo_path = await uploadWardrobePhoto({
+          userId: user.id,
+          itemId: id,
+          file: newFile,
+        });
+      }
+
+      // Determine wash_after_wears based on category
+      let effectiveWashCycle = washAfterWears;
+      if (category === "shoes" || category === "jewelry" || category === "accessory") {
+        effectiveWashCycle = 999;
+      }
+
+      await updateClothingItem(id, {
         name: name.trim(),
+        brand: brand.trim() || null,
+        photo_path,
         category,
-        subcategory,
+        subcategory: subcategory || null,
         season,
-        style,
-        size: size.trim() || undefined,
         colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),
-        photoDataUrl,
-        updatedAt: now,
+        wash_after_wears: effectiveWashCycle,
       });
 
+      showToast("Item updated successfully", "success");
       router.push(`/wardrobe/${id}`);
-    } catch {
-      setError("Saving failed. Try again.");
+    } catch (error) {
+      console.error("Error updating item:", error);
+      showToast("Failed to update item", "error");
       setSaving(false);
     }
   }
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-gray-100">
-        <div className="mx-auto max-w-2xl p-6">
-          <p className="text-sm text-gray-500">Loading...</p>
-        </div>
-      </main>
-    );
+    return <PageLoader />;
   }
 
-  if (!item) {
+  if (!name && !loading) {
     return (
-      <main className="min-h-screen bg-gray-100">
-        <div className="mx-auto max-w-2xl p-6">
-          <p className="font-medium mb-4 text-black">Item not found</p>
-          <button
-            onClick={() => router.push("/wardrobe")}
-            className="bg-black text-white px-4 py-2 rounded-full text-black"
-          >
-            Back to wardrobe
-          </button>
-        </div>
+      <main className="min-h-screen bg-gray-100 p-6">
+        <EmptyState
+          title="Item not found"
+          description="This item doesn't exist or you don't have access to it."
+          actionLabel="Back to wardrobe"
+          actionHref="/wardrobe"
+          icon="❌"
+        />
       </main>
     );
   }
@@ -253,156 +273,145 @@ export default function EditWardrobeItemPage() {
       <div className="mx-auto max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-black">Edit item</h1>
-          <button onClick={() => router.push(`/wardrobe/${id}`)} className="text-sm font-medium underline text-black">
+          <button 
+            onClick={() => router.push(`/wardrobe/${id}`)} 
+            className="text-sm font-medium underline text-black hover:text-gray-600"
+          >
             Cancel
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <div className="mb-4">
-            <label className="text-sm font-medium text-black">Photo</label>
-            <div className="mt-2">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-gray-500"
-              />
-            </div>
-
-            {preview ? (
-              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-gray-200">
-                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="mb-4">
-            <label className="text-sm font-medium text-black">Name</label>
+        <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Photo</label>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+              type="file"
+              accept="image/*"
+              onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
             />
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-sm font-medium text-black">Category</label>
-              <select
-                value={category}
-                onChange={(e) => {
-                  const newCategory = e.target.value as ClothingCategory;
-                  setCategory(newCategory);
-                  // Reset subcategory when category changes
-                  if (newCategory === "top") setSubcategory("t-shirt");
-                  else if (newCategory === "bottom") setSubcategory("shorts");
-                  else if (newCategory === "outerwear") setSubcategory("jacket");
-                  else if (newCategory === "shoes") setSubcategory("sneakers");
-                  else if (newCategory === "jewelry") setSubcategory("earrings");
-                  else if (newCategory === "accessory") setSubcategory("bag");
-                  else if (newCategory === "full-body") setSubcategory("dress");
-                  else setSubcategory("other");
-                }}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
-              >
-                {categories.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {subcategoryOptions.length > 0 && (
-              <div>
-                <label className="text-sm font-medium text-black">Subcategory</label>
-                <select
-                  value={subcategory}
-                  onChange={(e) => setSubcategory(e.target.value as ClothingSubcategory)}
-                  className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
-                >
-                  {subcategoryOptions.map((sc) => (
-                    <option key={sc.value} value={sc.value}>
-                      {sc.label}
-                    </option>
-                  ))}
-                </select>
+            {preview && (
+              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-gray-200 max-w-xs">
+                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-sm font-medium text-black">Season</label>
-              <select
-                value={season}
-                onChange={(e) => setSeason(e.target.value as ClothingSeason)}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+          <Input
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Black leather jacket"
+            required
+          />
+
+          <Input
+            label="Brand (optional)"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            placeholder="e.g. Nike, Zara, H&M"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Category"
+              value={category}
+              onChange={(e) => {
+                const newCategory = e.target.value as ClothingCategory;
+                setCategory(newCategory);
+                // Reset subcategory when category changes
+                if (newCategory === "top") setSubcategory("t-shirt");
+                else if (newCategory === "bottom") setSubcategory("shorts");
+                else if (newCategory === "outerwear") setSubcategory("jacket");
+                else if (newCategory === "shoes") setSubcategory("sneakers");
+                else if (newCategory === "jewelry") setSubcategory("earrings");
+                else if (newCategory === "accessory") setSubcategory("bag");
+                else if (newCategory === "full-body") setSubcategory("dress");
+                else setSubcategory(undefined);
+              }}
+            >
+              {categories.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+
+            {subcategoryOptions.length > 0 && (
+              <Select
+                label="Subcategory"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value as ClothingSubcategory)}
               >
-                {seasons.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
+                {subcategoryOptions.map((sc) => (
+                  <option key={sc.value} value={sc.value}>
+                    {sc.label}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            )}
+          </div>
 
+          <Select
+            label="Season"
+            value={season}
+            onChange={(e) => setSeason(e.target.value as ClothingSeason)}
+          >
+            {seasons.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </Select>
+
+          <Input
+            label="Colors (comma separated)"
+            value={colorsRaw}
+            onChange={(e) => setColorsRaw(e.target.value)}
+            placeholder="black, white, red"
+          />
+
+          <Input
+            label="Occasions (comma separated)"
+            value={occasionsRaw}
+            onChange={(e) => setOccasionsRaw(e.target.value)}
+            placeholder="casual, work, party"
+          />
+
+          {category !== "shoes" && category !== "jewelry" && category !== "accessory" && (
             <div>
-              <label className="text-sm font-medium text-black">Style</label>
-              <select
-                value={style}
-                onChange={(e) => setStyle(e.target.value as ClothingStyle)}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
-              >
-                {styles.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Wash after wears
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={washAfterWears}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1 && val <= 20) {
+                    setWashAfterWears(val);
+                  }
+                }}
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                How many times can you wear this before washing?
+              </p>
             </div>
-          </div>
+          )}
 
-          <div className="mb-4">
-            <label className="text-sm font-medium text-black">Colors (comma separated)</label>
-            <input
-              value={colorsRaw}
-              onChange={(e) => setColorsRaw(e.target.value)}
-              placeholder="black, white"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="text-sm font-medium text-black">Size</label>
-            <input
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-              placeholder="e.g. S, M, L, XL, 38, 40"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="text-sm font-medium text-black">Occasions (comma separated)</label>
-            <input
-              value={occasionsRaw}
-              onChange={(e) => setOccasionsRaw(e.target.value)}
-              placeholder="casual, work, party"
-              className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-gray-700"
-            />
-          </div>
-
-          {error ? <p className="text-sm text-red-600 mb-3">{error}</p> : null}
-
-          <button
+          <Button
+            variant="primary"
             onClick={onSave}
             disabled={!canSave}
-            className="w-full bg-black text-white py-3 rounded-2xl shadow disabled:opacity-40"
+            loading={saving}
+            className="w-full"
           >
-            {saving ? "Saving..." : "Save changes"}
-          </button>
+            Save changes
+          </Button>
         </div>
       </div>
     </main>

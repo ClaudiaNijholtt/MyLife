@@ -2,52 +2,104 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { db, type ClothingItem } from "@/lib/db";
+import { fetchClothingItems, type CloudClothingItem } from "@/lib/cloud/wardrobe";
+import { getWardrobePhotoSignedUrl } from "@/lib/cloud/storage";
+import { PageLoader } from "@/components/ui/loading";
+import { EmptyState } from "@/components/ui/empty-state";
+import { WardrobeFilters } from "@/components/wardrobe/wardrobe-filters";
+import { WardrobeGrid } from "@/components/wardrobe/wardrobe-card";
+
+type CloudClothingItemWithUrl = CloudClothingItem & { photoUrl: string | null };
 
 export default function WardrobePage() {
-  const [items, setItems] = useState<ClothingItem[]>([]);
+  const [items, setItems] = useState<CloudClothingItemWithUrl[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [category, setCategory] = useState<string>("*");
+  const [subcategory, setSubcategory] = useState<string>("*");
+  const [season, setSeason] = useState<string>("*");
+  const [occasion, setOccasion] = useState<string>("*");
+  const [laundryState, setLaundryState] = useState<string>("*");
 
   useEffect(() => {
-    async function refresh() {
-      const all = await db.clothingItems.orderBy("createdAt").reverse().toArray();
-      setItems(all);
+    async function loadItems() {
+      try {
+        console.log("[Wardrobe] Starting to load items...");
+        const startTime = performance.now();
+        const all = await fetchClothingItems();
+        
+        // Get signed URLs for all items
+        const withUrls = await Promise.all(
+          all.map(async (it) => ({
+            ...it,
+            photoUrl: it.photo_path 
+              ? await getWardrobePhotoSignedUrl(it.photo_path, 3600)
+              : null,
+          }))
+        );
+        
+        const endTime = performance.now();
+        console.log(`[Wardrobe] Loaded ${all.length} items in ${(endTime - startTime).toFixed(2)}ms`);
+        
+        setItems(withUrls);
+      } catch (error) {
+        console.error("Error loading items:", error);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    const creatingHandler = () => refresh();
-    const updatingHandler = () => refresh();
-    const deletingHandler = () => refresh();
-
-    db.clothingItems.hook("creating").subscribe(creatingHandler);
-    db.clothingItems.hook("updating").subscribe(updatingHandler);
-    db.clothingItems.hook("deleting").subscribe(deletingHandler);
-
-    refresh();
-
-    return () => {
-      db.clothingItems.hook("creating").unsubscribe(creatingHandler);
-      db.clothingItems.hook("updating").unsubscribe(updatingHandler);
-      db.clothingItems.hook("deleting").unsubscribe(deletingHandler);
-    };
+    loadItems();
   }, []);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
+    let result = items;
 
-    return items.filter((it) => {
-      const hay = [
-        it.name,
-        it.category,
-        it.season,
-        it.colors.join(" "),
-        it.occasions.join(" "),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [items, query]);
+    // Apply search query
+    const q = query.trim().toLowerCase();
+    if (q) {
+      result = result.filter((it) => {
+        const hay = [
+          it.name,
+          it.category,
+          it.season,
+          it.colors.join(" "),
+          it.occasions.join(" "),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    // Apply category filter
+    if (category !== "*") {
+      result = result.filter((it) => it.category === category);
+    }
+
+    // Apply subcategory filter
+    if (subcategory !== "*") {
+      result = result.filter((it) => it.subcategory === subcategory);
+    }
+
+    // Apply season filter
+    if (season !== "*") {
+      result = result.filter((it) => it.season === season);
+    }
+
+    // Apply occasion filter
+    if (occasion !== "*") {
+      result = result.filter((it) => it.occasions.includes(occasion));
+    }
+
+    // Apply laundry state filter
+    if (laundryState !== "*") {
+      result = result.filter((it) => it.laundry_state === laundryState);
+    }
+
+    return result;
+  }, [items, query, category, subcategory, season, occasion, laundryState]);
 
   return (
     <main className="min-h-screen bg-gray-100">
@@ -62,85 +114,67 @@ export default function WardrobePage() {
           </Link>
         </div>
 
-        <div className="mb-5">
+        <div className="mb-5 flex gap-2">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search (name, color, occasion...)"
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
+            className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black placeholder:text-gray-700"
           />
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="bg-white border border-gray-200 px-4 py-2 rounded-2xl hover:bg-gray-50 transition text-black font-medium"
+          >
+            {showFilters ? "Hide" : "Filter"}
+          </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-4 mb-5">
+        {/* <div className="bg-white rounded-2xl shadow-sm p-4 mb-5">
             <p className="text-sm text-gray-500">Quick stats</p>
             <Stats />
-        </div>
+        </div> */}
 
-        {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <p className="font-medium mb-1 text-black">No items yet</p>
-            <p className="text-sm text-gray-500">
-              Add your first clothing item to start building your wardrobe.
-            </p>
-            <Link
-              href="/wardrobe/add"
-              className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-full"
-            >
-              Add item
-            </Link>
-          </div>
+        {showFilters && (
+          <WardrobeFilters
+            items={items}
+            category={category}
+            subcategory={subcategory}
+            season={season}
+            occasion={occasion}
+            laundryState={laundryState}
+            onCategoryChange={setCategory}
+            onSubcategoryChange={setSubcategory}
+            onSeasonChange={setSeason}
+            onOccasionChange={setOccasion}
+            onLaundryStateChange={setLaundryState}
+            onReset={() => {
+              setCategory("*");
+              setSubcategory("*");
+              setSeason("*");
+              setOccasion("*");
+              setLaundryState("*");
+            }}
+          />
+        )}
+
+        {loading ? (
+          <PageLoader />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title={query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*" 
+              ? "No matching items" 
+              : "No items yet"}
+            description={query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*"
+              ? "Try adjusting your search or filters."
+              : "Add your first clothing item to start building your wardrobe."}
+            actionLabel={!(query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*") ? "Add item" : undefined}
+            actionHref={!(query || category !== "*" || season !== "*" || occasion !== "*" || laundryState !== "*") ? "/wardrobe/add" : undefined}
+            icon="👔"
+          />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map((item) => (
-                <Link
-                key={item.id}
-                href={`/wardrobe/${item.id}`}
-                className="bg-white rounded-2xl shadow-sm p-3 block hover:shadow-md transition"
-                >
-                <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2">
-                    <img
-                    src={item.photoDataUrl}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                    />
-                </div>
-                <p className="text-sm font-medium truncate text-black">{item.name}</p>
-                <p className="text-xs text-gray-500">
-                    {item.category} • {item.season}
-                </p>
-                </Link>
-            ))}
-          </div>
+          <WardrobeGrid items={filtered} />
         )}
       </div>
     </main>
-  );
-}
-
-function Stats() {
-  const [worn30, setWorn30] = useState<number>(0);
-
-  useEffect(() => {
-    refresh();
-
-    async function refresh() {
-      const since = new Date();
-      since.setDate(since.getDate() - 30);
-      const sinceIso = since.toISOString();
-
-      const logs = await db.wearLogs
-        .where("wornAt")
-        .above(sinceIso)
-        .toArray();
-
-      const uniqueItems = new Set(logs.map((l) => l.itemId));
-      setWorn30(uniqueItems.size);
-    }
-  }, []);
-
-  return (
-    <p className="text-sm font-medium text-black">
-      Items worn in last 30 days: <span className="font-bold">{worn30}</span>
-    </p>
   );
 }
