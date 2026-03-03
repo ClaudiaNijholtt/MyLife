@@ -17,7 +17,7 @@ import {
   type FullBodySubcategory,
   type ClothingItem 
 } from "@/lib/db";
-import { fileToDataUrl } from "@/lib/file";
+import { compressForWardrobe, fileToDataUrl } from "@/lib/image";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -187,11 +187,13 @@ export default function EditWardrobeItemPage() {
 
   async function onPickFile(f: File | null) {
     setError("");
-    setNewFile(f);
+    setNewFile(null);
+    setPreview("");
     if (!f) return;
 
-    const dataUrl = await fileToDataUrl(f);
-    setPreview(dataUrl);
+    const { file: compressed, previewUrl } = await compressForWardrobe(f);
+    setNewFile(compressed);
+    setPreview(previewUrl);
   }
 
   async function onSave() {
@@ -201,7 +203,14 @@ export default function EditWardrobeItemPage() {
 
     try {
       const now = new Date().toISOString();
-      const photoDataUrl = preview;
+      let photoDataUrl = item.photoDataUrl;
+      let thumbnailDataUrl = item.thumbnailDataUrl;
+      
+      // Convert compressed file to dataURL if photo was updated
+      if (newFile) {
+        photoDataUrl = await fileToDataUrl(newFile);
+        thumbnailDataUrl = photoDataUrl; // gebruik dezelfde, al gecomprimeerd
+      }
 
       await db.clothingItems.put({
         ...item,
@@ -215,6 +224,7 @@ export default function EditWardrobeItemPage() {
         colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),
         photoDataUrl,
+        thumbnailDataUrl,
         updatedAt: now,
       });
 

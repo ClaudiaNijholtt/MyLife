@@ -17,7 +17,7 @@ import {
   type AccessorySubcategory,
   type FullBodySubcategory
 } from "@/lib/db";
-import { fileToDataUrl } from "@/lib/file";
+import { compressForWardrobe, fileToDataUrl } from "@/lib/image";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -162,16 +162,18 @@ const subcategoryOptions = useMemo(() => {
     return name.trim().length > 0 && !!file && !saving;
   }, [name, file, saving]);
 
-  async function onPickFile(f: File | null) {
-    setError("");
-    setFile(f);
-    if (!f) {
-      setPreview("");
-      return;
-    }
-    const dataUrl = await fileToDataUrl(f);
-    setPreview(dataUrl);
-  }
+async function onPickFile(f: File | null) {
+  setError("");
+  setFile(null);
+  setPreview("");
+
+  if (!f) return;
+
+  const { file: compressed, previewUrl } = await compressForWardrobe(f);
+
+  setFile(compressed);
+  setPreview(previewUrl); 
+}
 
   async function onSave() {
     if (!canSave || !file) return;
@@ -179,13 +181,15 @@ const subcategoryOptions = useMemo(() => {
     setError("");
 
     try {
-      const photoDataUrl = preview || (await fileToDataUrl(file));
+      const photoDataUrl = await fileToDataUrl(file);
+      const thumbnailDataUrl = photoDataUrl; // gebruik dezelfde, al gecomprimeerd
       const now = new Date().toISOString();
 
       await db.clothingItems.put({
         id: uid(),
         name: name.trim(),
         photoDataUrl,
+        thumbnailDataUrl,
         category,
         subcategory,
         colors: parseList(colorsRaw),
