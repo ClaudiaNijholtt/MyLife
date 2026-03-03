@@ -102,6 +102,7 @@ export type ClothingItem = {
   name: string;
   photo_path: string;
   category: string;
+  subcategory?: string | null;
   season: string;
   colors: string[];
   occasions: string[];

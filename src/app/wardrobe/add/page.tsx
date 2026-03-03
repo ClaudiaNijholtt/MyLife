@@ -205,6 +205,7 @@ async function onPickFile(f: File | null) {
         name: name.trim(),
         photo_path,
         category,
+        subcategory: subcategory || undefined,
         season,
         colors: parseList(colorsRaw),
         occasions: parseList(occasionsRaw),

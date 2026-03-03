@@ -18,6 +18,7 @@ export async function createClothingItem(input: {
   name: string;
   photo_path: string;
   category: string;
+  subcategory?: string;
   season: string;
   colors: string[];
   occasions: string[];
