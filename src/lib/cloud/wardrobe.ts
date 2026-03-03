@@ -1,22 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
+import type { ClothingItem } from "@/lib/types/wardrobe";
 
-export type CloudClothingItem = {
-  id: string;
-  user_id: string;
-  name: string;
-  photo_path: string;
-  category: string;
-  season: string;
-  colors: string[];
-  occasions: string[];
-  brand?: string | null;
-  laundry_state: string;
-  wears_since_wash: number;
-  wash_after_wears: number;
-  last_worn_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type CloudClothingItem = ClothingItem;
 
 export async function fetchClothingItems() {
   const supabase = createClient();

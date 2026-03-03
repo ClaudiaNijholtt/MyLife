@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { fetchClothingItem, fetchClothingItems, deleteClothingItem, updateClothingItem, type CloudClothingItem } from "@/lib/cloud/wardrobe";
 import { getWardrobePhotoSignedUrl } from "@/lib/cloud/storage";
 import { findSimilarItems } from "@/lib/cloud/recommendations";
+import { PageLoader } from "@/components/ui/loading";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { SimilarItemsSlider } from "@/components/wardrobe/similar-items-slider";
+import { useToast } from "@/components/ui/toast";
 
 type CloudClothingItemWithUrl = CloudClothingItem & { photoUrl: string | null };
 
@@ -13,11 +17,13 @@ export default function WardrobeItemDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
+  const { showToast } = useToast();
 
   const [item, setItem] = useState<CloudClothingItemWithUrl | null>(null);
   const [loading, setLoading] = useState(true);
   const [wornTodayClicked, setWornTodayClicked] = useState(false);
   const [similarItems, setSimilarItems] = useState<CloudClothingItemWithUrl[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -45,72 +51,87 @@ export default function WardrobeItemDetailPage() {
         setSimilarItems(similarWithUrls);
       } catch (error) {
         console.error("Error loading item:", error);
+        showToast("Failed to load item", "error");
         setItem(null);
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, showToast]);
+
+  async function updateItemState(updates: Partial<CloudClothingItem>) {
+    try {
+      const updated = await updateClothingItem(id, updates);
+      const photoUrl = updated.photo_path 
+        ? await getWardrobePhotoSignedUrl(updated.photo_path, 3600)
+        : null;
+      setItem({ ...updated, photoUrl });
+      return true;
+    } catch (error) {
+      console.error("Error updating item:", error);
+      return false;
+    }
+  }
 
   async function onDelete() {
-    if (!confirm("Delete this item?")) return;
+    if (!confirm("Are you sure you want to delete this item? This cannot be undone.")) return;
+    
+    setActionLoading("delete");
     try {
       await deleteClothingItem(id);
+      showToast("Item deleted successfully", "success");
       router.push("/wardrobe");
     } catch (error) {
       console.error("Error deleting item:", error);
-      alert("Failed to delete item");
+      showToast("Failed to delete item", "error");
+      setActionLoading(null);
     }
   }
 
   async function onWornToday() {
-    try {
-      const now = new Date().toISOString();
-      const updated = await updateClothingItem(id, {
-        last_worn_at: now,
-        wears_since_wash: (item?.wears_since_wash || 0) + 1,
-      });
-      const photoUrl = updated.photo_path 
-        ? await getWardrobePhotoSignedUrl(updated.photo_path, 3600)
-        : null;
-      setItem({ ...updated, photoUrl });
+    setActionLoading("worn");
+    const success = await updateItemState({
+      last_worn_at: new Date().toISOString(),
+      wears_since_wash: (item?.wears_since_wash || 0) + 1,
+    });
+    
+    if (success) {
       setWornTodayClicked(true);
+      showToast("Marked as worn today", "success");
       setTimeout(() => setWornTodayClicked(false), 2000);
-    } catch (error) {
-      console.error("Error updating item:", error);
-      alert("Failed to mark as worn");
+    } else {
+      showToast("Failed to mark as worn", "error");
     }
+    setActionLoading(null);
   }
 
   async function onSendToLaundry() {
-    try {
-      const updated = await updateClothingItem(id, {
-        laundry_state: "dirty",
-      });
-      const photoUrl = updated.photo_path 
-        ? await getWardrobePhotoSignedUrl(updated.photo_path, 3600)
-        : null;
-      setItem({ ...updated, photoUrl });
-    } catch (error) {
-      console.error("Error updating item:", error);
-      alert("Failed to send to laundry");
+    setActionLoading("laundry");
+    const success = await updateItemState({
+      laundry_state: "dirty",
+    });
+    
+    if (success) {
+      showToast("Sent to laundry", "success");
+    } else {
+      showToast("Failed to update", "error");
     }
+    setActionLoading(null);
   }
 
   async function onMarkClean() {
-    try {
-      const updated = await updateClothingItem(id, {
-        laundry_state: "clean",
-        wears_since_wash: 0,
-      });
-      const photoUrl = updated.photo_path 
-        ? await getWardrobePhotoSignedUrl(updated.photo_path, 3600)
-        : null;
-      setItem({ ...updated, photoUrl });
-    } catch (error) {
-      console.error("Error updating item:", error);
-      alert("Failed to mark as clean");
+    setActionLoading("clean");
+    const success = await updateItemState({
+      laundry_state: "clean",
+      wears_since_wash: 0,
+    });
+    
+    if (success) {
+      showToast("Marked as clean", "success");
+    } else {
+      showToast("Failed to update", "error");
     }
+    setActionLoading(null);
   }
 
   const isWornToday = item?.last_worn_at 
@@ -118,27 +139,19 @@ export default function WardrobeItemDetailPage() {
     : false;
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-gray-100">
-        <div className="mx-auto max-w-2xl p-6">
-          <p className="text-sm text-gray-500">Loading...</p>
-        </div>
-      </main>
-    );
+    return <PageLoader />;
   }
 
   if (!item) {
     return (
-      <main className="min-h-screen bg-gray-100">
-        <div className="mx-auto max-w-2xl p-6">
-          <p className="font-medium mb-4">Item not found</p>
-          <button
-            onClick={() => router.push("/wardrobe")}
-            className="bg-black text-white px-4 py-2 rounded-full"
-          >
-            Back to wardrobe
-          </button>
-        </div>
+      <main className="min-h-screen bg-gray-100 p-6">
+        <EmptyState
+          title="Item not found"
+          description="This item doesn't exist or you don't have access to it."
+          actionLabel="Back to wardrobe"
+          actionHref="/wardrobe"
+          icon="❌"
+        />
       </main>
     );
   }
@@ -147,51 +160,53 @@ export default function WardrobeItemDetailPage() {
     <main className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => router.push("/wardrobe")} className="text-sm font-medium underline text-black">
-            Back
+          <button 
+            onClick={() => router.push("/wardrobe")} 
+            className="text-sm font-medium underline text-black hover:text-gray-600"
+          >
+            ← Back
           </button>
 
           <div className="flex flex-wrap gap-2">
-            <button
-                onClick={onWornToday}
-                className={`px-4 py-2 rounded-full shadow-sm transition-all ${
-                  wornTodayClicked 
-                    ? "bg-green-500 text-white border-green-500" 
-                    : isWornToday
-                      ? "bg-green-100 text-green-800 border border-green-300"
-                      : "bg-white border border-gray-200 text-black hover:bg-gray-50"
-                }`}
+            <Button
+              variant={wornTodayClicked ? "primary" : isWornToday ? "secondary" : "secondary"}
+              onClick={onWornToday}
+              loading={actionLoading === "worn"}
+              className={wornTodayClicked ? "bg-green-500 hover:bg-green-600" : isWornToday ? "bg-green-100 text-green-800 border-green-300" : ""}
             >
-                {wornTodayClicked ? "✓ Marked!" : isWornToday ? "Worn today ✓" : "Worn today"}
-            </button>
+              {wornTodayClicked ? "✓ Marked!" : isWornToday ? "Worn today ✓" : "Worn today"}
+            </Button>
 
-              <button
-                    onClick={onSendToLaundry}
-                    className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black hover:bg-gray-50 transition-all"
-                >
-                    Send to laundry
-                </button>
-
-                <button
-                    onClick={onMarkClean}
-                    className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black hover:bg-gray-50 transition-all"
-                >
-                    Mark as clean
-                </button>
-
-            <button
-                onClick={() => router.push(`/wardrobe/${id}/edit`)}
-                className="bg-white border border-gray-200 px-4 py-2 rounded-full shadow-sm text-black hover:bg-gray-50 transition-all"
+            <Button
+              variant="secondary"
+              onClick={onSendToLaundry}
+              loading={actionLoading === "laundry"}
             >
-                Edit
-            </button>
+              Send to laundry
+            </Button>
 
-            <button
-                onClick={onDelete}
-                className="bg-black text-white px-4 py-2 rounded-full shadow hover:bg-gray-800 transition-all"
+            <Button
+              variant="secondary"
+              onClick={onMarkClean}
+              loading={actionLoading === "clean"}
             >
-                Delete
-            </button>
+              Mark as clean
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={() => router.push(`/wardrobe/${id}/edit`)}
+            >
+              Edit
+            </Button>
+
+            <Button
+              variant="danger"
+              onClick={onDelete}
+              loading={actionLoading === "delete"}
+            >
+              Delete
+            </Button>
           </div>
         </div>
 
@@ -254,44 +269,7 @@ export default function WardrobeItemDetailPage() {
           </div>
         </div>
 
-        {/* Similar items slider */}
-        <div className="mt-6 bg-white rounded-2xl shadow-sm p-5">
-          <h2 className="text-lg font-semibold mb-4 text-black">Similar items</h2>
-          
-          {similarItems.length === 0 ? (
-            <p className="text-sm text-gray-500">No similar items found yet. Add more items to your wardrobe!</p>
-          ) : (
-            <div className="relative">
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {similarItems.map((similar) => (
-                  <Link
-                    key={similar.id}
-                    href={`/wardrobe/${similar.id}`}
-                    className="flex-none w-32 snap-start group"
-                  >
-                    <div className="aspect-square rounded-xl overflow-hidden bg-gray-200 mb-2 group-hover:shadow-md transition">
-                      {similar.photoUrl ? (
-                        <img 
-                          src={similar.photoUrl} 
-                          alt={similar.name} 
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium truncate text-black">{similar.name}</p>
-                    <p className="text-xs text-gray-500">{similar.category}</p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <SimilarItemsSlider items={similarItems} />
       </div>
     </main>
   );

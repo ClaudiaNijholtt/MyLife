@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import { 
   type ClothingCategory, 
   type ClothingSeason, 
@@ -15,7 +14,8 @@ import {
   type JewelrySubcategory,
   type AccessorySubcategory,
   type FullBodySubcategory
-} from "@/lib/db";
+} from "@/lib/types/wardrobe";
+import { generateId } from "@/lib/utils/helpers";
 import { compressForWardrobe } from "@/lib/image";
 import { createClient } from "@/lib/supabase/client";
 import { uploadWardrobePhoto } from "@/lib/cloud/storage";
@@ -194,7 +194,7 @@ async function onPickFile(f: File | null) {
       const user = auth.user;
       if (!user) throw new Error("Not authenticated");
 
-      const itemId = uuidv4();
+      const itemId = generateId();
       const photo_path = await uploadWardrobePhoto({
         userId: user.id,
         itemId,

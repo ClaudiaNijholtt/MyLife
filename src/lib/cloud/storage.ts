@@ -30,3 +30,12 @@ export async function getWardrobePhotoSignedUrl(path: string, expiresInSeconds =
   if (error) throw error;
   return data.signedUrl;
 }
+
+export async function deleteWardrobePhoto(path: string) {
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from("wardrobe")
+    .remove([path]);
+
+  if (error) throw error;
+}
