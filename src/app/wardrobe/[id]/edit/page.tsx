@@ -20,7 +20,8 @@ import { getWardrobePhotoSignedUrl, uploadWardrobePhoto, deleteWardrobePhoto } f
 import { createClient } from "@/lib/supabase/client";
 import { PageLoader } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input, Select } from "@/components/ui/form";
+import { Input } from "@/components/ui/form";
+import { ChipGroup, MultiChipGroup } from "@/components/ui/chips";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ArrowLeft, Save } from "lucide-react";
@@ -110,11 +111,119 @@ const seasons: { value: ClothingSeason; label: string }[] = [
   { value: "all", label: "All year" },
 ];
 
+const baseColorOptions: Array<{ value: string; label: string }> = [
+  { value: "black", label: "Black" },
+  { value: "white", label: "White" },
+  { value: "gray", label: "Gray" },
+  { value: "beige", label: "Beige" },
+  { value: "brown", label: "Brown" },
+  { value: "blue", label: "Blue" },
+  { value: "green", label: "Green" },
+  { value: "red", label: "Red" },
+  { value: "pink", label: "Pink" },
+  { value: "purple", label: "Purple" },
+  { value: "yellow", label: "Yellow" },
+  { value: "orange", label: "Orange" },
+];
+
+type SizeChipConfig =
+  | {
+      kind: "fixed";
+      label: string;
+      hint: string;
+      options: string[];
+    }
+  | {
+      kind: "clothing";
+      label: string;
+      hint: string;
+      letterOptions: string[];
+      numberOptions: string[];
+    };
+
 function parseList(s: string) {
   return s
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
+}
+
+function getDefaultSubcategory(category: ClothingCategory): ClothingSubcategory {
+  if (category === "top") return "t-shirt";
+  if (category === "bottom") return "shorts";
+  if (category === "outerwear") return "jacket";
+  if (category === "shoes") return "sneakers";
+  if (category === "jewelry") return "earrings";
+  if (category === "accessory") return "bag";
+  if (category === "full-body") return "dress";
+  return "other";
+}
+
+function getSizeChipConfig(category: ClothingCategory, subcategory?: ClothingSubcategory): SizeChipConfig | null {
+  if (category === "accessory") {
+    return null;
+  }
+
+  if (category === "jewelry") {
+    if (subcategory === "ring") {
+      return {
+        kind: "fixed",
+        label: "Ringmaat",
+        hint: "Kies ringmaat in EU.",
+        options: [
+          "14", "15", "16", "17", "18", "19", "20", "21", "22",
+        ],
+      };
+    }
+
+    if (subcategory === "bracelet" || subcategory === "watch") {
+      return {
+        kind: "fixed",
+        label: "Polsmaat",
+        hint: "Kies de polsomtrek in cm.",
+        options: [
+          "14 cm", "15 cm", "16 cm", "17 cm", "18 cm", "19 cm", "20 cm", "21 cm", "22 cm",
+        ],
+      };
+    }
+
+    if (subcategory === "anklet") {
+      return {
+        kind: "fixed",
+        label: "Enkelmaat",
+        hint: "Kies de enkelomtrek in cm.",
+        options: [
+          "20 cm", "21 cm", "22 cm", "23 cm", "24 cm", "25 cm", "26 cm", "27 cm", "28 cm",
+        ],
+      };
+    }
+
+    return {
+      kind: "fixed",
+      label: "Sieraadmaat",
+      hint: "Gebruik one size of verstelbaar als er geen exacte maat is.",
+      options: ["One size", "Verstelbaar", "Kort", "Medium", "Lang"],
+    };
+  }
+
+  if (category === "shoes") {
+    return {
+      kind: "fixed",
+      label: "Schoenmaat",
+      hint: "EU schoenmaten.",
+      options: [
+        "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46",
+      ],
+    };
+  }
+
+  return {
+    kind: "clothing",
+    label: "Kledingmaat",
+    hint: "Van minimaal XXS/32 tot maximaal XL/48.",
+    letterOptions: ["XXS", "XS", "S", "M", "L", "XL"],
+    numberOptions: ["32", "34", "36", "38", "40", "42", "44", "46", "48"],
+  };
 }
 
 export default function EditWardrobeItemPage() {
@@ -130,11 +239,12 @@ export default function EditWardrobeItemPage() {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [size, setSize] = useState("");
+  const [clothingSizeMode, setClothingSizeMode] = useState<"letters" | "numbers">("letters");
   const [category, setCategory] = useState<ClothingCategory>("top");
   const [subcategory, setSubcategory] = useState<ClothingSubcategory | undefined>(undefined);
   const [season, setSeason] = useState<ClothingSeason>("all");
   const [washAfterWears, setWashAfterWears] = useState(3);
-  const [colorsRaw, setColorsRaw] = useState("");
+  const [colors, setColors] = useState<string[]>([]);
   const [preview, setPreview] = useState<string>("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -147,11 +257,19 @@ export default function EditWardrobeItemPage() {
         setName(found.name);
         setBrand(found.brand || "");
         setSize(found.size || "");
+        if (found.category !== "shoes" && found.category !== "jewelry" && found.category !== "accessory") {
+          const normalizedSize = (found.size || "").trim();
+          if (["32", "34", "36", "38", "40", "42", "44", "46", "48"].includes(normalizedSize)) {
+            setClothingSizeMode("numbers");
+          } else {
+            setClothingSizeMode("letters");
+          }
+        }
         setCategory(found.category as ClothingCategory);
         setSubcategory(found.subcategory as ClothingSubcategory | undefined);
         setSeason(found.season as ClothingSeason);
         setWashAfterWears(found.wash_after_wears);
-        setColorsRaw(found.colors.join(", "));
+        setColors(found.colors);
         setOriginalPhotoPath(found.photo_path);
         
         // Get signed URL for preview
@@ -180,6 +298,36 @@ export default function EditWardrobeItemPage() {
       default: return [];
     }
   }, [category]);
+
+  const colorOptions = useMemo(() => {
+    const extra = colors
+      .filter((value) => !baseColorOptions.some((option) => option.value === value))
+      .map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) }));
+
+    return [...baseColorOptions, ...extra];
+  }, [colors]);
+
+  const sizeChipConfig = useMemo(
+    () => getSizeChipConfig(category, subcategory),
+    [category, subcategory]
+  );
+
+  const sizeOptions = useMemo(() => {
+    if (!sizeChipConfig) return [];
+
+    if (sizeChipConfig.kind === "clothing") {
+      const options = clothingSizeMode === "letters" ? sizeChipConfig.letterOptions : sizeChipConfig.numberOptions;
+      return options.map((value) => ({
+        value,
+        label: value,
+      }));
+    }
+
+    return sizeChipConfig.options.map((value) => ({
+      value,
+      label: value,
+    }));
+  }, [sizeChipConfig, clothingSizeMode]);
 
   const canSave = useMemo(() => {
     return name.trim().length > 0 && !saving;
@@ -233,12 +381,12 @@ export default function EditWardrobeItemPage() {
       await updateClothingItem(id, {
         name: name.trim(),
         brand: brand.trim() || null,
-        size: size.trim() || null,
+        size: category === "accessory" ? null : (size.trim() || null),
         photo_path,
         category,
         subcategory: subcategory || null,
         season,
-        colors: parseList(colorsRaw),
+        colors,
         wash_after_wears: effectiveWashCycle,
       });
 
@@ -315,70 +463,68 @@ export default function EditWardrobeItemPage() {
             placeholder="e.g. Nike, Zara, H&M"
           />
 
-          <Input
-            label="Size (optional)"
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
-            placeholder="e.g. S, M, L, XL, 38"
-          />
+          {sizeChipConfig && (
+            <div>
+              {sizeChipConfig.kind === "clothing" && (
+                <div className="mb-3">
+                  <ChipGroup
+                    label="Maat type"
+                    options={[
+                      { value: "letters", label: "Letters" },
+                      { value: "numbers", label: "Nummers" },
+                    ]}
+                    value={clothingSizeMode}
+                    onChange={(next) => setClothingSizeMode(next)}
+                  />
+                </div>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
+              <ChipGroup
+                label={sizeChipConfig.label}
+                options={sizeOptions}
+                value={size || undefined}
+                onChange={(next) => setSize(next)}
+              />
+              <p className="text-xs text-slate-500 mt-1">{sizeChipConfig.hint}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <ChipGroup
               label="Category"
+              options={categories}
               value={category}
-              onChange={(e) => {
-                const newCategory = e.target.value as ClothingCategory;
-                setCategory(newCategory);
-                // Reset subcategory when category changes
-                if (newCategory === "top") setSubcategory("t-shirt");
-                else if (newCategory === "bottom") setSubcategory("shorts");
-                else if (newCategory === "outerwear") setSubcategory("jacket");
-                else if (newCategory === "shoes") setSubcategory("sneakers");
-                else if (newCategory === "jewelry") setSubcategory("earrings");
-                else if (newCategory === "accessory") setSubcategory("bag");
-                else if (newCategory === "full-body") setSubcategory("dress");
-                else setSubcategory(undefined);
+              onChange={(next) => {
+                setCategory(next);
+                setSubcategory(getDefaultSubcategory(next));
+                if (next === "accessory") {
+                  setSize("");
+                }
               }}
-            >
-              {categories.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
+            />
 
             {subcategoryOptions.length > 0 && (
-              <Select
+              <ChipGroup
                 label="Subcategory"
+                options={subcategoryOptions}
                 value={subcategory}
-                onChange={(e) => setSubcategory(e.target.value as ClothingSubcategory)}
-              >
-                {subcategoryOptions.map((sc) => (
-                  <option key={sc.value} value={sc.value}>
-                    {sc.label}
-                  </option>
-                ))}
-              </Select>
+                onChange={(next) => setSubcategory(next as ClothingSubcategory)}
+              />
             )}
+
+            <ChipGroup
+              label="Season"
+              options={seasons}
+              value={season}
+              onChange={(next) => setSeason(next)}
+            />
           </div>
 
-          <Select
-            label="Season"
-            value={season}
-            onChange={(e) => setSeason(e.target.value as ClothingSeason)}
-          >
-            {seasons.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </Select>
-
-          <Input
-            label="Colors (comma separated)"
-            value={colorsRaw}
-            onChange={(e) => setColorsRaw(e.target.value)}
-            placeholder="black, white, red"
+          <MultiChipGroup
+            label="Colors"
+            options={colorOptions}
+            values={colors}
+            onChange={(next) => setColors(next)}
           />
 
           {category !== "shoes" && category !== "jewelry" && category !== "accessory" && (
