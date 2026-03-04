@@ -240,6 +240,8 @@ export default function EditWardrobeItemPage() {
   const [brand, setBrand] = useState("");
   const [size, setSize] = useState("");
   const [clothingSizeMode, setClothingSizeMode] = useState<"letters" | "numbers">("letters");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [showExtraDetails, setShowExtraDetails] = useState(false);
   const [category, setCategory] = useState<ClothingCategory>("top");
   const [subcategory, setSubcategory] = useState<ClothingSubcategory | undefined>(undefined);
   const [season, setSeason] = useState<ClothingSeason>("all");
@@ -332,6 +334,10 @@ export default function EditWardrobeItemPage() {
   const canSave = useMemo(() => {
     return name.trim().length > 0 && !saving;
   }, [name, saving]);
+
+  const canContinueBasics = useMemo(() => {
+    return name.trim().length > 0;
+  }, [name]);
 
   async function onPickFile(f: File | null) {
     setNewFile(null);
@@ -431,135 +437,176 @@ export default function EditWardrobeItemPage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-2 select-none">Photo</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="touch-manipulation block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
-              onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-            />
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <p className="text-xs font-medium text-slate-500 mb-4">Stap {step} van 2</p>
 
-            {preview && (
-              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-xs">
-                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2 select-none">Photo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="touch-manipulation block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                />
+
+                {preview && (
+                  <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-xs">
+                    <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <Input
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Black leather jacket"
-            required
-          />
+              <Input
+                label="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Black leather jacket"
+                required
+              />
 
-          <Input
-            label="Brand (optional)"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            placeholder="e.g. Nike, Zara, H&M"
-          />
+              <ChipGroup
+                label="Category"
+                options={categories}
+                value={category}
+                onChange={(next) => {
+                  setCategory(next);
+                  setSubcategory(getDefaultSubcategory(next));
+                  if (next === "accessory") {
+                    setSize("");
+                  }
+                }}
+              />
 
-          {sizeChipConfig && (
-            <div>
-              {sizeChipConfig.kind === "clothing" && (
-                <div className="mb-3">
+              {subcategoryOptions.length > 0 && (
+                <ChipGroup
+                  label="Subcategory"
+                  options={subcategoryOptions}
+                  value={subcategory}
+                  onChange={(next) => setSubcategory(next as ClothingSubcategory)}
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={!canContinueBasics}
+                className="w-full rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-sm hover:opacity-90 transition disabled:opacity-40"
+              >
+                Volgende
+              </button>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              {sizeChipConfig && (
+                <div>
+                  {sizeChipConfig.kind === "clothing" && (
+                    <div className="mb-3">
+                      <ChipGroup
+                        label="Maat type"
+                        options={[
+                          { value: "letters", label: "Letters" },
+                          { value: "numbers", label: "Nummers" },
+                        ]}
+                        value={clothingSizeMode}
+                        onChange={(next) => setClothingSizeMode(next)}
+                      />
+                    </div>
+                  )}
+
                   <ChipGroup
-                    label="Maat type"
-                    options={[
-                      { value: "letters", label: "Letters" },
-                      { value: "numbers", label: "Nummers" },
-                    ]}
-                    value={clothingSizeMode}
-                    onChange={(next) => setClothingSizeMode(next)}
+                    label={sizeChipConfig.label}
+                    options={sizeOptions}
+                    value={size || undefined}
+                    onChange={(next) => setSize(next)}
                   />
+                  <p className="text-xs text-slate-500 mt-1">{sizeChipConfig.hint}</p>
                 </div>
               )}
 
               <ChipGroup
-                label={sizeChipConfig.label}
-                options={sizeOptions}
-                value={size || undefined}
-                onChange={(next) => setSize(next)}
+                label="Season"
+                options={seasons}
+                value={season}
+                onChange={(next) => setSeason(next)}
               />
-              <p className="text-xs text-slate-500 mt-1">{sizeChipConfig.hint}</p>
+
+              <MultiChipGroup
+                label="Colors"
+                options={colorOptions}
+                values={colors}
+                onChange={(next) => setColors(next)}
+              />
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowExtraDetails((prev) => !prev)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                >
+                  {showExtraDetails ? "Verberg extra details" : "Toon extra details"}
+                </button>
+              </div>
+
+              {showExtraDetails && (
+                <div className="space-y-4">
+                  <Input
+                    label="Brand (optional)"
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    placeholder="e.g. Nike, Zara, H&M"
+                  />
+
+                  {category !== "shoes" && category !== "jewelry" && category !== "accessory" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 select-none">
+                        Wash after wears
+                      </label>
+                      <input
+                        type="number"
+                        className="touch-manipulation w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+                        min="1"
+                        max="20"
+                        value={washAfterWears}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val) && val >= 1 && val <= 20) {
+                            setWashAfterWears(val);
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        How many times can you wear this before washing?
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="flex-1 rounded-2xl border border-slate-200 bg-white text-slate-700 px-4 py-3 text-sm font-medium shadow-sm hover:bg-slate-50 transition"
+                >
+                  Terug
+                </button>
+
+                <Button
+                  variant="primary"
+                  onClick={onSave}
+                  disabled={!canSave}
+                  loading={saving}
+                  className="flex-1"
+                >
+                  Save changes
+                </Button>
+              </div>
             </div>
           )}
-
-          <div className="space-y-4">
-            <ChipGroup
-              label="Category"
-              options={categories}
-              value={category}
-              onChange={(next) => {
-                setCategory(next);
-                setSubcategory(getDefaultSubcategory(next));
-                if (next === "accessory") {
-                  setSize("");
-                }
-              }}
-            />
-
-            {subcategoryOptions.length > 0 && (
-              <ChipGroup
-                label="Subcategory"
-                options={subcategoryOptions}
-                value={subcategory}
-                onChange={(next) => setSubcategory(next as ClothingSubcategory)}
-              />
-            )}
-
-            <ChipGroup
-              label="Season"
-              options={seasons}
-              value={season}
-              onChange={(next) => setSeason(next)}
-            />
-          </div>
-
-          <MultiChipGroup
-            label="Colors"
-            options={colorOptions}
-            values={colors}
-            onChange={(next) => setColors(next)}
-          />
-
-          {category !== "shoes" && category !== "jewelry" && category !== "accessory" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 select-none">
-                Wash after wears
-              </label>
-              <input
-                type="number"
-                className="touch-manipulation w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
-                min="1"
-                max="20"
-                value={washAfterWears}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val) && val >= 1 && val <= 20) {
-                    setWashAfterWears(val);
-                  }
-                }}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                How many times can you wear this before washing?
-              </p>
-            </div>
-          )}
-
-          <Button
-            variant="primary"
-            onClick={onSave}
-            disabled={!canSave}
-            loading={saving}
-            className="w-full"
-          >
-            Save changes
-          </Button>
         </div>
       </div>
     </main>

@@ -236,6 +236,8 @@ export default function AddWardrobeItemPage() {
   const [style, setStyle] = useState<ClothingStyle | undefined>("casual");
   const [size, setSize] = useState("");
   const [clothingSizeMode, setClothingSizeMode] = useState<"letters" | "numbers">("letters");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [showExtraDetails, setShowExtraDetails] = useState(false);
   const [brand, setBrand] = useState("");
   const [washAfterWears, setWashAfterWears] = useState(2);
   const [colors, setColors] = useState<string[]>([]);
@@ -294,6 +296,10 @@ const subcategoryOptions = useMemo(() => {
   const canSave = useMemo(() => {
     return name.trim().length > 0 && !!file && !saving;
   }, [name, file, saving]);
+
+  const canContinueBasics = useMemo(() => {
+    return name.trim().length > 0 && !!file;
+  }, [name, file]);
 
 async function onPickFile(f: File | null) {
   setError("");
@@ -370,153 +376,197 @@ async function onPickFile(f: File | null) {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="mb-4">
-            <label className="text-xs font-medium text-slate-600 select-none">Photo</label>
-            <div className="mt-2">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
-              />
-            </div>
+          <p className="text-xs font-medium text-slate-500 mb-4">Stap {step} van 2</p>
 
-            {preview ? (
-              <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-sm">
-                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="mb-4">
-            <label className="text-xs font-medium text-slate-600 select-none">Name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Black blazer"
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
-            />
-          </div>
-
-          <div className="space-y-4 mb-4">
-            <ChipGroup
-              label="Category"
-              options={categories}
-              value={category}
-              onChange={(next) => {
-                setCategory(next);
-                setSubcategory(getDefaultSubcategory(next));
-                if (next === "accessory") {
-                  setSize("");
-                }
-              }}
-            />
-
-            {subcategoryOptions.length > 0 && (
-              <ChipGroup
-                label="Subcategory"
-                options={subcategoryOptions}
-                value={subcategory}
-                onChange={(next) => setSubcategory(next as ClothingSubcategory)}
-              />
-            )}
-
-            <ChipGroup
-              label="Season"
-              options={seasons}
-              value={season}
-              onChange={(next) => setSeason(next)}
-            />
-
-            <ChipGroup
-              label="Style"
-              options={styles}
-              value={style}
-              onChange={(next) => setStyle(next)}
-            />
-          </div>
-
-          <div className="mb-4">
-            <MultiChipGroup
-              label="Colors"
-              options={colorOptions}
-              values={colors}
-              onChange={(next) => setColors(next)}
-            />
-          </div>
-
-          {sizeChipConfig && (
-            <div className="mb-4">
-              {sizeChipConfig.kind === "clothing" && (
-                <div className="mb-3">
-                  <ChipGroup
-                    label="Maat type"
-                    options={[
-                      { value: "letters", label: "Letters" },
-                      { value: "numbers", label: "Nummers" },
-                    ]}
-                    value={clothingSizeMode}
-                    onChange={(next) => setClothingSizeMode(next)}
+          {step === 1 && (
+            <>
+              <div className="mb-4">
+                <label className="text-xs font-medium text-slate-600 select-none">Photo</label>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
                   />
+                </div>
+
+                {preview ? (
+                  <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-sm">
+                    <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mb-4">
+                <label className="text-xs font-medium text-slate-600 select-none">Name</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Black blazer"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
+                />
+              </div>
+
+              <div className="space-y-4 mb-4">
+                <ChipGroup
+                  label="Category"
+                  options={categories}
+                  value={category}
+                  onChange={(next) => {
+                    setCategory(next);
+                    setSubcategory(getDefaultSubcategory(next));
+                    if (next === "accessory") {
+                      setSize("");
+                    }
+                  }}
+                />
+
+                {subcategoryOptions.length > 0 && (
+                  <ChipGroup
+                    label="Subcategory"
+                    options={subcategoryOptions}
+                    value={subcategory}
+                    onChange={(next) => setSubcategory(next as ClothingSubcategory)}
+                  />
+                )}
+              </div>
+
+              <button
+                onClick={() => setStep(2)}
+                disabled={!canContinueBasics}
+                className="w-full rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-sm hover:opacity-90 transition disabled:opacity-40"
+              >
+                Volgende
+              </button>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className="space-y-4 mb-4">
+                <ChipGroup
+                  label="Season"
+                  options={seasons}
+                  value={season}
+                  onChange={(next) => setSeason(next)}
+                />
+
+                <ChipGroup
+                  label="Style"
+                  options={styles}
+                  value={style}
+                  onChange={(next) => setStyle(next)}
+                />
+              </div>
+
+              <div className="mb-4">
+                <MultiChipGroup
+                  label="Colors"
+                  options={colorOptions}
+                  values={colors}
+                  onChange={(next) => setColors(next)}
+                />
+              </div>
+
+              {sizeChipConfig && (
+                <div className="mb-4">
+                  {sizeChipConfig.kind === "clothing" && (
+                    <div className="mb-3">
+                      <ChipGroup
+                        label="Maat type"
+                        options={[
+                          { value: "letters", label: "Letters" },
+                          { value: "numbers", label: "Nummers" },
+                        ]}
+                        value={clothingSizeMode}
+                        onChange={(next) => setClothingSizeMode(next)}
+                      />
+                    </div>
+                  )}
+
+                  <ChipGroup
+                    label={sizeChipConfig.label}
+                    options={sizeOptions}
+                    value={size || undefined}
+                    onChange={(next) => setSize(next)}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">{sizeChipConfig.hint}</p>
                 </div>
               )}
 
-              <ChipGroup
-                label={sizeChipConfig.label}
-                options={sizeOptions}
-                value={size || undefined}
-                onChange={(next) => setSize(next)}
-              />
-              <p className="text-xs text-slate-500 mt-1">{sizeChipConfig.hint}</p>
-            </div>
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowExtraDetails((prev) => !prev)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                >
+                  {showExtraDetails ? "Verberg extra details" : "Toon extra details"}
+                </button>
+              </div>
+
+              {showExtraDetails && (
+                <div className="space-y-4 mb-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 select-none">Brand</label>
+                    <input
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder="e.g. Nike, Zara, H&M"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
+                    />
+                  </div>
+
+                  {needsWashing && (
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 select-none">Wash after wears</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={washAfterWears}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val) && val >= 1 && val <= 20) {
+                            setWashAfterWears(val);
+                          }
+                        }}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">How many times can you wear this before washing?</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {error ? <p className="text-sm text-red-600 mb-3">{error}</p> : null}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="flex-1 rounded-2xl border border-slate-200 bg-white text-slate-700 px-4 py-3 text-sm font-medium shadow-sm hover:bg-slate-50 transition"
+                >
+                  Terug
+                </button>
+
+                <button
+                  onClick={onSave}
+                  disabled={!canSave}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-sm hover:opacity-90 transition disabled:opacity-40"
+                >
+                  {saving ? (
+                    "Saving..."
+                  ) : (
+                    <>
+                      <Plus className="h-5 w-5" />
+                      Save item
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="mb-4">
-            <label className="text-xs font-medium text-slate-600 select-none">Brand</label>
-            <input
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="e.g. Nike, Zara, H&M"
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
-            />
-          </div>
-
-          {needsWashing && (
-            <div className="mb-4">
-              <label className="text-xs font-medium text-slate-600 select-none">Wash after wears</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={washAfterWears}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val) && val >= 1 && val <= 20) {
-                    setWashAfterWears(val);
-                  }
-                }}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
-              />
-              <p className="text-xs text-slate-500 mt-1">How many times can you wear this before washing?</p>
-            </div>
-          )}
-
-          {error ? <p className="text-sm text-red-600 mb-3">{error}</p> : null}
-
-          <button
-            onClick={onSave}
-            disabled={!canSave}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium shadow-sm hover:opacity-90 transition disabled:opacity-40"
-          >
-            {saving ? (
-              "Saving..."
-            ) : (
-              <>
-                <Plus className="h-5 w-5" />
-                Save item
-              </>
-            )}
-          </button>
         </div>
       </div>
     </main>
