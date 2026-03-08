@@ -17,11 +17,13 @@ import {
 } from "@/lib/types/wardrobe";
 import { generateId } from "@/lib/utils/helpers";
 import { compressForWardrobe } from "@/lib/image";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth/context";
 import { uploadWardrobePhoto } from "@/lib/cloud/storage";
 import { createClothingItem } from "@/lib/cloud/wardrobe";
 import { ChipGroup, MultiChipGroup } from "@/components/ui/chips";
-import { ArrowLeft, Plus } from "lucide-react";
+import { CameraCapture } from "@/components/wardrobe/camera-capture";
+import env from "@/config/env";
+import { ArrowLeft, Plus, Sparkles, Camera, Upload } from "lucide-react";
 
 const categories: { value: ClothingCategory; label: string }[] = [
   { value: "top", label: "Top" },
@@ -228,6 +230,7 @@ function getSizeChipConfig(category: ClothingCategory, subcategory?: ClothingSub
 
 export default function AddWardrobeItemPage() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ClothingCategory>("top");
@@ -244,7 +247,11 @@ export default function AddWardrobeItemPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [error, setError] = useState<string>("");
+
+  const aiEnabled = env.aiProvider === "claude";
 
   // Categories that don't need washing
   const noWashCategories = ["shoes", "jewelry", "accessory"];
@@ -314,15 +321,102 @@ async function onPickFile(f: File | null) {
   setPreview(previewUrl); 
 }
 
+  async function onAiScan(overrideFile?: File) {
+    const target = overrideFile ?? file;
+    if (!target) return;
+    setScanning(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", target);
+
+      const res = await fetch("/api/ai/scan-item", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Scan failed");
+      }
+
+      const { data } = await res.json();
+      console.log("[AI Scan] Response:", data);
+
+      // Map category — handle aliases like "dress" → "full-body"
+      const categoryAliases: Record<string, ClothingCategory> = {
+        dress: "full-body",
+        jumpsuit: "full-body",
+        romper: "full-body",
+        overall: "full-body",
+        jacket: "outerwear",
+        coat: "outerwear",
+        blazer: "outerwear",
+        cardigan: "outerwear",
+        vest: "outerwear",
+        pants: "bottom",
+        jeans: "bottom",
+        shorts: "bottom",
+        skirt: "bottom",
+        trousers: "bottom",
+        sneakers: "shoes",
+        boots: "shoes",
+        heels: "shoes",
+        sandals: "shoes",
+      };
+
+      let aiCategory: ClothingCategory | undefined;
+      let aiSubcategory: ClothingSubcategory | undefined;
+
+      if (data.category) {
+        const rawCat = data.category.toLowerCase().trim();
+        if (categories.some((c) => c.value === rawCat)) {
+          aiCategory = rawCat as ClothingCategory;
+        } else if (categoryAliases[rawCat]) {
+          aiCategory = categoryAliases[rawCat];
+          // Use the raw value as subcategory if it's a valid one
+          aiSubcategory = rawCat as ClothingSubcategory;
+        }
+      }
+
+      if (data.name) setName(data.name);
+
+      if (aiCategory) {
+        setCategory(aiCategory);
+        if (data.subcategory && !aiSubcategory) {
+          aiSubcategory = data.subcategory.toLowerCase().trim() as ClothingSubcategory;
+        }
+        setSubcategory(aiSubcategory || getDefaultSubcategory(aiCategory));
+      }
+
+      if (data.season) setSeason(data.season);
+      if (data.style) setStyle(data.style);
+
+      // Normalize colors: ensure lowercase, filter empty
+      if (data.colors?.length) {
+        const normalized = (data.colors as string[])
+          .map((c: string) => c.toLowerCase().trim())
+          .filter(Boolean);
+        if (normalized.length) setColors(normalized);
+      }
+
+      if (data.brand) setBrand(data.brand);
+      if (data.size) setSize(data.size);
+    } catch (e) {
+      console.error("AI scan error:", e);
+      setError(e instanceof Error ? e.message : "Scan failed. Try again.");
+    } finally {
+      setScanning(false);
+    }
+  }
+
   async function onSave() {
     if (!canSave || !file) return;
     setSaving(true);
     setError("");
 
     try {
-      const supabase = createClient();
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth.user;
       if (!user) throw new Error("Not authenticated");
 
       const itemId = generateId();
@@ -382,20 +476,82 @@ async function onPickFile(f: File | null) {
             <>
               <div className="mb-4">
                 <label className="text-xs font-medium text-slate-600 select-none">Photo</label>
-                <div className="mt-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                    className="block w-full text-sm text-slate-900 file:mr-4 file:py-2 file:px-4 file:rounded-2xl file:border-0 file:text-sm file:font-medium file:bg-slate-900 file:text-white hover:file:opacity-90 file:cursor-pointer"
-                  />
-                </div>
 
-                {preview ? (
-                  <div className="mt-3 aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-sm">
-                    <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                {!preview ? (
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    {/* Upload option */}
+                    <label className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 py-8 cursor-pointer hover:border-slate-400 hover:bg-slate-100 transition">
+                      <Upload className="h-8 w-8 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-500">Upload foto</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Camera option */}
+                    <button
+                      type="button"
+                      onClick={() => setShowCamera(true)}
+                      className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-purple-300 bg-purple-50 py-8 cursor-pointer hover:border-purple-400 hover:bg-purple-100 transition"
+                    >
+                      <Camera className="h-8 w-8 text-purple-400" />
+                      <span className="text-xs font-medium text-purple-500">
+                        {aiEnabled ? "Scan met camera" : "Neem foto"}
+                      </span>
+                    </button>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mt-2">
+                    <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 max-w-sm">
+                      <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFile(null);
+                          setPreview("");
+                        }}
+                        className="flex-1 rounded-2xl border border-slate-200 bg-white text-slate-700 px-4 py-3 text-sm font-medium hover:bg-slate-50 transition"
+                      >
+                        Andere foto
+                      </button>
+
+                      {aiEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => onAiScan()}
+                          disabled={scanning}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-purple-600 text-white px-4 py-3 text-sm font-medium shadow-sm hover:bg-purple-700 transition disabled:opacity-50"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          {scanning ? "Scanning..." : "AI Scan"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Camera overlay */}
+                {showCamera && (
+                  <CameraCapture
+                    onClose={() => setShowCamera(false)}
+                    onCapture={async (capturedFile) => {
+                      setShowCamera(false);
+                      const { file: compressed, previewUrl } = await compressForWardrobe(capturedFile);
+                      setFile(compressed);
+                      setPreview(previewUrl);
+                      // Auto-scan with AI, pass file directly to avoid stale closure
+                      if (aiEnabled) {
+                        onAiScan(compressed);
+                      }
+                    }}
+                  />
+                )}
               </div>
 
               <div className="mb-4">
@@ -404,7 +560,7 @@ async function onPickFile(f: File | null) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Black blazer"
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
                 />
               </div>
 
@@ -513,7 +669,7 @@ async function onPickFile(f: File | null) {
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
                       placeholder="e.g. Nike, Zara, H&M"
-                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-slate-900 placeholder:text-slate-400 text-slate-900 touch-manipulation"
                     />
                   </div>
 
@@ -531,7 +687,7 @@ async function onPickFile(f: File | null) {
                             setWashAfterWears(val);
                           }
                         }}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
+                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation"
                       />
                       <p className="text-xs text-slate-500 mt-1">How many times can you wear this before washing?</p>
                     </div>

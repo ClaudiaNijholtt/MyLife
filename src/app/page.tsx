@@ -1,10 +1,19 @@
+"use client";
+
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { useAuth } from "@/lib/auth/context";
 import { Shirt, Sparkles, WashingMachine } from "lucide-react";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function Home() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
+      </main>
+    );
+  }
 
   if (!user) {
     return (
@@ -91,7 +100,7 @@ export default async function Home() {
 
         {/* Outfit Suggestion Card */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
-          <h2 className="text-lg font-semibold mb-2 text-slate-900">Today's Outfit</h2>
+          <h2 className="text-lg font-semibold mb-2 text-slate-900">Today&apos;s Outfit</h2>
           <p className="text-sm text-slate-500">
             Outfit suggestions will appear here.
           </p>

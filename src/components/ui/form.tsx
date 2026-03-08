@@ -14,7 +14,7 @@ export function Input({ label, error, className = "", ...props }: InputProps) {
         </label>
       )}
       <input
-        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
+        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
           error ? "border-red-500" : ""
         } ${className}`}
         {...props}
@@ -38,7 +38,7 @@ export function Textarea({ label, error, className = "", ...props }: TextareaPro
         </label>
       )}
       <textarea
-        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
+        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
           error ? "border-red-500" : ""
         } ${className}`}
         {...props}
@@ -63,7 +63,7 @@ export function Select({ label, error, className = "", children, ...props }: Sel
         </label>
       )}
       <select
-        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
+        className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 touch-manipulation ${
           error ? "border-red-500" : ""
         } ${className}`}
         {...props}

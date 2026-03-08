@@ -1,5 +1,26 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Backend / AI
+
+This project uses Supabase for auth, database and storage, with optional Claude AI for clothing scanning.
+
+### Required env vars
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### Required env vars for Claude scan mode
+
+- `NEXT_PUBLIC_AI_PROVIDER=claude`
+- `ANTHROPIC_API_KEY`
+- optional: `CLAUDE_MODEL` (default: `claude-haiku-4-5-20251001`)
+
+### Claude scan endpoint
+
+- `POST /api/ai/scan-item`
+- multipart form-data with `file` (or `image`) field
+- returns structured JSON extraction for wardrobe autofill
+
 ## Getting Started
 
 First, run the development server:
