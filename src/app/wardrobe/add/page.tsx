@@ -542,12 +542,22 @@ async function onPickFile(f: File | null) {
                     onClose={() => setShowCamera(false)}
                     onCapture={async (capturedFile) => {
                       setShowCamera(false);
-                      const { file: compressed, previewUrl } = await compressForWardrobe(capturedFile);
-                      setFile(compressed);
-                      setPreview(previewUrl);
-                      // Auto-scan with AI, pass file directly to avoid stale closure
-                      if (aiEnabled) {
-                        onAiScan(compressed);
+                      try {
+                        const { file: compressed, previewUrl } = await compressForWardrobe(capturedFile);
+                        setFile(compressed);
+                        setPreview(previewUrl);
+                        // Auto-scan with AI, pass file directly to avoid stale closure
+                        if (aiEnabled) {
+                          onAiScan(compressed);
+                        }
+                      } catch (e) {
+                        console.error("Camera capture processing error:", e);
+                        // Fallback: use the raw captured file without compression
+                        setFile(capturedFile);
+                        setPreview(URL.createObjectURL(capturedFile));
+                        if (aiEnabled) {
+                          onAiScan(capturedFile);
+                        }
                       }
                     }}
                   />
