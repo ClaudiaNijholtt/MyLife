@@ -472,6 +472,17 @@ async function onPickFile(f: File | null) {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <p className="text-xs font-medium text-slate-500 mb-4">Stap {step} van 2</p>
 
+          {/* Scanning overlay */}
+          {scanning && (
+            <div className="mb-4 flex items-center gap-3 rounded-2xl bg-purple-50 border border-purple-200 px-4 py-4">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
+              <div>
+                <p className="text-sm font-medium text-purple-700">AI is aan het scannen...</p>
+                <p className="text-xs text-purple-500">Gegevens worden automatisch ingevuld</p>
+              </div>
+            </div>
+          )}
+
           {step === 1 && (
             <>
               <div className="mb-4">
@@ -541,23 +552,23 @@ async function onPickFile(f: File | null) {
                   <CameraCapture
                     onClose={() => setShowCamera(false)}
                     onCapture={async (capturedFile) => {
+                      console.log("[Camera] onCapture fired, file:", capturedFile.name, capturedFile.type, capturedFile.size);
                       setShowCamera(false);
+                      let fileToScan: File = capturedFile;
                       try {
                         const { file: compressed, previewUrl } = await compressForWardrobe(capturedFile);
+                        console.log("[Camera] Compression done:", compressed.name, compressed.type, compressed.size);
                         setFile(compressed);
                         setPreview(previewUrl);
-                        // Auto-scan with AI, pass file directly to avoid stale closure
-                        if (aiEnabled) {
-                          onAiScan(compressed);
-                        }
+                        fileToScan = compressed;
                       } catch (e) {
-                        console.error("Camera capture processing error:", e);
-                        // Fallback: use the raw captured file without compression
+                        console.error("[Camera] Compression failed, using raw file:", e);
                         setFile(capturedFile);
                         setPreview(URL.createObjectURL(capturedFile));
-                        if (aiEnabled) {
-                          onAiScan(capturedFile);
-                        }
+                      }
+                      if (aiEnabled) {
+                        console.log("[Camera] Starting AI scan...");
+                        onAiScan(fileToScan);
                       }
                     }}
                   />
