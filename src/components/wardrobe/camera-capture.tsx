@@ -93,11 +93,16 @@ export function CameraCapture({ onCapture, onClose }: Props) {
 
     ctx.drawImage(video, offsetX, offsetY, size, size, 0, 0, size, size);
 
+    // iOS Safari doesn't support WebP canvas encoding — detect and fall back to JPEG
+    const supportsWebp = canvas.toDataURL("image/webp").startsWith("data:image/webp");
+    const mimeType = supportsWebp ? "image/webp" : "image/jpeg";
+    const ext = supportsWebp ? "webp" : "jpg";
+
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          const file = new File([blob], "camera-capture.webp", {
-            type: "image/webp",
+          const file = new File([blob], `camera-capture.${ext}`, {
+            type: blob.type,
           });
 
           // Stop camera
@@ -108,7 +113,7 @@ export function CameraCapture({ onCapture, onClose }: Props) {
           onCapture(file);
         }
       },
-      "image/webp",
+      mimeType,
       0.85
     );
   }
