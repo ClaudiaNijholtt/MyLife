@@ -318,7 +318,12 @@ async function onPickFile(f: File | null) {
   const { file: compressed, previewUrl } = await compressForWardrobe(f);
 
   setFile(compressed);
-  setPreview(previewUrl); 
+  setPreview(previewUrl);
+
+  // Auto-scan with AI
+  if (aiEnabled) {
+    onAiScan(compressed);
+  }
 }
 
   async function onAiScan(overrideFile?: File) {
