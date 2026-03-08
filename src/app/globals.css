@@ -46,3 +46,18 @@ body {
     opacity: 1;
   }
 }
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateZ(0);
+}

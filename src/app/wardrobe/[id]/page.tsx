@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { fetchClothingItem, fetchClothingItems, deleteClothingItem, updateClothingItem, type CloudClothingItem } from "@/lib/cloud/wardrobe";
 import { getWardrobePhotoSignedUrl } from "@/lib/cloud/storage";
 import { findSimilarItems } from "@/lib/cloud/recommendations";
-import { PageLoader } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { SimilarItemsSlider } from "@/components/wardrobe/similar-items-slider";
@@ -30,25 +29,39 @@ export default function WardrobeItemDetailPage() {
     (async () => {
       try {
         const found = await fetchClothingItem(id);
-        const photoUrl = found.photo_path 
-          ? await getWardrobePhotoSignedUrl(found.photo_path, 3600)
-          : null;
-        setItem({ ...found, photoUrl });
+        setItem({ ...found, photoUrl: null });
+        setLoading(false);
 
-        // Fetch all items to find similar ones
+        // Load main image url in background
+        if (found.photo_path) {
+          getWardrobePhotoSignedUrl(found.photo_path, 3600)
+            .then((photoUrl) => setItem((prev) => (prev ? { ...prev, photoUrl } : prev)))
+            .catch(() => {
+              // ignore image url errors and keep page usable
+            });
+        }
+
+        // Fetch similar items in background
         const allItems = await fetchClothingItems();
         const similar = findSimilarItems(allItems, found, 12);
-        
-        // Get signed URLs for similar items
+
+        setSimilarItems(similar.map((it) => ({ ...it, photoUrl: null })));
+
         const similarWithUrls = await Promise.all(
-          similar.map(async (it) => ({
-            ...it,
-            photoUrl: it.photo_path 
-              ? await getWardrobePhotoSignedUrl(it.photo_path, 3600)
-              : null,
-          }))
+          similar.map(async (it) => {
+            try {
+              return {
+                ...it,
+                photoUrl: it.photo_path
+                  ? await getWardrobePhotoSignedUrl(it.photo_path, 3600)
+                  : null,
+              };
+            } catch {
+              return { ...it, photoUrl: null };
+            }
+          })
         );
-        
+
         setSimilarItems(similarWithUrls);
       } catch (error) {
         console.error("Error loading item:", error);
@@ -139,8 +152,24 @@ export default function WardrobeItemDetailPage() {
     ? new Date(item.last_worn_at).toDateString() === new Date().toDateString()
     : false;
 
-  if (loading) {
-    return <PageLoader />;
+  if (loading && !item) {
+    return (
+      <main className="min-h-screen">
+        <div className="mx-auto max-w-2xl p-6">
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="aspect-square rounded-xl bg-slate-100 mb-4 animate-pulse" />
+            <div className="h-7 w-2/3 rounded bg-slate-100 mb-2 animate-pulse" />
+            <div className="h-4 w-1/3 rounded bg-slate-100 mb-6 animate-pulse" />
+            <div className="space-y-3">
+              <div className="h-4 w-full rounded bg-slate-100 animate-pulse" />
+              <div className="h-4 w-5/6 rounded bg-slate-100 animate-pulse" />
+              <div className="h-4 w-4/6 rounded bg-slate-100 animate-pulse" />
+              <div className="h-4 w-3/6 rounded bg-slate-100 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (!item) {
@@ -287,7 +316,9 @@ export default function WardrobeItemDetailPage() {
           </div>
         </div>
 
-        <SimilarItemsSlider items={similarItems} />
+        <div className="mt-6">
+          <SimilarItemsSlider items={similarItems} />
+        </div>
       </div>
     </main>
   );

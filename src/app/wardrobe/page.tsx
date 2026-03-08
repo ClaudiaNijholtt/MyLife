@@ -31,20 +31,29 @@ export default function WardrobePage() {
         console.log("[Wardrobe] Starting to load items...");
         const startTime = performance.now();
         const all = await fetchClothingItems();
-        
-        // Get signed URLs for all items
+
+        setItems(all.map((it) => ({ ...it, photoUrl: null })));
+        setLoading(false);
+
+        // Resolve signed URLs in the background so the page renders immediately
         const withUrls = await Promise.all(
-          all.map(async (it) => ({
-            ...it,
-            photoUrl: it.photo_path 
-              ? await getWardrobePhotoSignedUrl(it.photo_path, 3600)
-              : null,
-          }))
+          all.map(async (it) => {
+            try {
+              return {
+                ...it,
+                photoUrl: it.photo_path
+                  ? await getWardrobePhotoSignedUrl(it.photo_path, 3600)
+                  : null,
+              };
+            } catch {
+              return { ...it, photoUrl: null };
+            }
+          })
         );
         
         const endTime = performance.now();
         console.log(`[Wardrobe] Loaded ${all.length} items in ${(endTime - startTime).toFixed(2)}ms`);
-        
+
         setItems(withUrls);
       } catch (error) {
         console.error("Error loading items:", error);

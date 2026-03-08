@@ -17,7 +17,7 @@ import {
 import { compressForWardrobe } from "@/lib/image";
 import { fetchClothingItem, updateClothingItem } from "@/lib/cloud/wardrobe";
 import { getWardrobePhotoSignedUrl, uploadWardrobePhoto, deleteWardrobePhoto } from "@/lib/cloud/storage";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth/context";
 import { PageLoader } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/form";
@@ -231,7 +231,7 @@ export default function EditWardrobeItemPage() {
   const router = useRouter();
   const id = params.id;
   const { showToast } = useToast();
-  const supabase = createClient();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [originalPhotoPath, setOriginalPhotoPath] = useState<string>("");
@@ -358,8 +358,6 @@ export default function EditWardrobeItemPage() {
     setSaving(true);
 
     try {
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth.user;
       if (!user) throw new Error("Not authenticated");
 
       let photo_path = originalPhotoPath;
@@ -567,7 +565,7 @@ export default function EditWardrobeItemPage() {
                       </label>
                       <input
                         type="number"
-                        className="touch-manipulation w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black text-black"
+                        className="touch-manipulation w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base md:text-sm outline-none focus:ring-2 focus:ring-black text-black"
                         min="1"
                         max="20"
                         value={washAfterWears}
