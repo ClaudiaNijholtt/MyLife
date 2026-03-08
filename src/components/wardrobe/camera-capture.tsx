@@ -75,7 +75,7 @@ export function CameraCapture({ onCapture, onClose }: Props) {
     startCamera(newMode);
   }
 
-  function capture() {
+  async function capture() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -98,24 +98,37 @@ export function CameraCapture({ onCapture, onClose }: Props) {
     const mimeType = supportsWebp ? "image/webp" : "image/jpeg";
     const ext = supportsWebp ? "webp" : "jpg";
 
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          const file = new File([blob], `camera-capture.${ext}`, {
-            type: blob.type,
-          });
+    // Stop camera immediately so user sees transition
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
 
-          // Stop camera
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach((t) => t.stop());
+    // Use toDataURL as primary method — more reliable across iOS versions
+    try {
+      const dataUrl = canvas.toDataURL(mimeType, 0.85);
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `camera-capture.${ext}`, {
+        type: blob.type || mimeType,
+      });
+      onCapture(file);
+    } catch (err) {
+      console.error("Camera capture toDataURL fallback error:", err);
+      // Last resort: try toBlob
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const file = new File([blob], `camera-capture.${ext}`, {
+              type: blob.type,
+            });
+            onCapture(file);
           }
-
-          onCapture(file);
-        }
-      },
-      mimeType,
-      0.85
-    );
+        },
+        mimeType,
+        0.85
+      );
+    }
   }
 
   return (
